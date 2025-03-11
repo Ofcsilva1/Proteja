@@ -10,6 +10,14 @@ import {
   getDatabase, ref, push, set, onValue, update, 
   query, orderByChild, equalTo, get
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+// Importações do Firebase Auth
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 // ==================
 //  CONFIG FIREBASE
@@ -28,17 +36,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 getAnalytics(app);
 const database = getDatabase(app);
+// Inicializa o Firebase Auth
+const auth = getAuth(app);
 
 // ==================
 //  LÓGICA PRINCIPAL
 // ==================
 document.addEventListener("DOMContentLoaded", function() {
-  /*******************
-   * CREDENCIAIS FIXAS (login fixo para testes)
-   *******************/
-  const VALID_USERNAME = "Proteja";
-  const VALID_PASSWORD = "Proteja";
-
   /*******************
    * SELETORES DOM – Telas de Login, Registro e App
    *******************/
@@ -46,14 +50,16 @@ document.addEventListener("DOMContentLoaded", function() {
   const loginForm = document.getElementById("login-form");
   const appSection = document.getElementById("app-section");
 
-  // NOVOS SELETORES PARA REGISTRO
+  // Seletores para Registro
   const registerSection = document.getElementById("register-section");
   const registerForm = document.getElementById("register-form");
   const linkRegister = document.getElementById("link-register");
   const linkLogin = document.getElementById("link-login");
   const mostrarSenhaReg = document.getElementById("mostrar-senha-reg");
+  // Link para "Esqueceu a senha?"
+  const linkReset = document.getElementById("link-reset");
 
-  // Seletores do site (casos) – permanecem os mesmos
+  // Seletores do site (casos)
   const btnNovoCaso = document.getElementById("btnNovoCaso");
   const btnCasosSalvos = document.getElementById("btnCasosSalvos");
 
@@ -151,12 +157,11 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  REGISTRO DE NOVA CONTA
+  //  REGISTRO DE NOVA CONTA (usando Firebase Auth)
   // ===================
   registerForm.addEventListener("submit", function(e) {
     e.preventDefault();
-    console.log("Register form submitted"); // Verifica se o evento é disparado
-
+    console.log("Register form submitted");
     const emailNumero = document.getElementById("email-numero").value.trim();
     const senha = document.getElementById("senha").value;
     const confirmarSenha = document.getElementById("confirmar-senha").value;
@@ -165,64 +170,66 @@ document.addEventListener("DOMContentLoaded", function() {
       showNotification("As senhas não coincidem!", "danger");
       return;
     }
-
-    console.log("Salvando nova conta:", emailNumero, senha);
-
-    // Salva a nova conta no nó "usuarios"
-    const usuariosRef = ref(database, "usuarios");
-    const newUserRef = push(usuariosRef);
-    const userData = { emailNumero, senha }; // Em produção, utilize Firebase Auth
-
-    set(newUserRef, userData)
-      .then(() => {
+    // Cria a conta via Firebase Auth
+    createUserWithEmailAndPassword(auth, emailNumero, senha)
+      .then((userCredential) => {
         showNotification("Conta criada com sucesso!", "success");
         registerForm.reset();
         // Volta para a tela de login
         registerSection.style.display = "none";
         loginSection.style.display = "block";
       })
-      .catch(err => {
-        console.error("Erro ao criar a conta", err);
-        showNotification("Erro ao criar a conta!", "danger");
+      .catch((error) => {
+        console.error("Erro no registro:", error);
+        if (error.code === 'auth/email-already-in-use') {
+          showNotification("Este usuário já existe!", "danger");
+        } else {
+          showNotification("Erro ao criar a conta!", "danger");
+        }
       });
   });
 
   // ===================
-  //  LOGIN (FAKE) + CONSULTA DB
+  //  ESQUECEU A SENHA (Recuperação)
+  // ===================
+  linkReset.addEventListener("click", function(e) {
+    e.preventDefault();
+    const email = document.getElementById("username").value.trim();
+    if (!email) {
+      alert("Por favor, informe seu e-mail/número no campo de usuário para recuperar a senha.");
+      return;
+    }
+    sendPasswordResetEmail(auth, email)
+      .then(() => {
+        showNotification("E-mail de redefinição de senha enviado!", "info");
+      })
+      .catch((error) => {
+        console.error("Erro ao enviar e-mail de redefinição:", error);
+        alert("Erro ao enviar e-mail de redefinição!");
+      });
+  });
+
+  // ===================
+  //  LOGIN (usando Firebase Auth)
   // ===================
   loginForm.addEventListener("submit", function(e) {
     e.preventDefault();
-    const username = document.getElementById("username").value;
+    const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
-    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
-      loginSuccess();
-    } else {
-      const usuariosRef = ref(database, "usuarios");
-      const q = query(usuariosRef, orderByChild("emailNumero"), equalTo(username));
-      get(q)
-        .then(snapshot => {
-          if (snapshot.exists()) {
-            let found = false;
-            snapshot.forEach(childSnapshot => {
-              const user = childSnapshot.val();
-              if (user.senha === password) {
-                found = true;
-              }
-            });
-            if (found) {
-              loginSuccess();
-            } else {
-              alert("Senha incorreta!");
-            }
-          } else {
-            alert("Usuário não encontrado!");
-          }
-        })
-        .catch(err => {
-          console.error(err);
+    signInWithEmailAndPassword(auth, username, password)
+      .then((userCredential) => {
+        loginSuccess();
+      })
+      .catch((error) => {
+        console.error("Erro no login:", error);
+        if (error.code === 'auth/wrong-password') {
+          alert("Senha incorreta!");
+        } else if (error.code === 'auth/user-not-found') {
+          alert("Usuário não encontrado!");
+        } else {
           alert("Erro no login!");
-        });
-    }
+        }
+      });
     loginForm.reset();
   });
 
@@ -234,16 +241,20 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // ===================
-  //  LOGOUT
+  //  LOGOUT (usando Firebase Auth)
   // ===================
   const btnLogout = document.getElementById("btnLogout");
   btnLogout.addEventListener("click", function() {
-    // Oculta a área principal
-    appSection.style.display = "none";
-    // Mostra a tela de login
-    loginSection.style.display = "block";
-    // Mensagem opcional
-    showNotification("Você saiu com sucesso!", "info");
+    signOut(auth)
+      .then(() => {
+        appSection.style.display = "none";
+        loginSection.style.display = "block";
+        showNotification("Você saiu com sucesso!", "info");
+      })
+      .catch((error) => {
+        console.error("Erro ao sair:", error);
+        alert("Erro ao sair!");
+      });
   });
 
   // ===================
@@ -315,7 +326,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const cells = row.querySelectorAll("td");
       if (!cells.length) return;
       const txtProntuario = cells[0].innerText.toLowerCase();
-      const txtCriad = cells[3].innerText.toLowerCase(); // 3 -> Nome da CRIAD
+      const txtCriad = cells[3].innerText.toLowerCase(); // Nome da CRIAD
   
       let matchProntuario = !valProntuario || txtProntuario.includes(valProntuario);
       let matchCriad = !valCriad || txtCriad.includes(valCriad);
@@ -328,7 +339,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
   
       let matchMes = true;
-      let displayDates = fullData.datasTexto; // Padrão
+      let displayDates = fullData.datasTexto;
   
       if (valMes && fullData.mapaDatas) {
         if (fullData.mapaDatas[valMes] && fullData.mapaDatas[valMes].length > 0) {
@@ -530,7 +541,7 @@ document.addEventListener("DOMContentLoaded", function() {
       formSection.classList.add("animate__fadeIn");
     }
   });
-
+  
   // ===================
   //  EXPORTAÇÕES (CSV, XLS, PDF)
   // ===================
@@ -541,11 +552,11 @@ document.addEventListener("DOMContentLoaded", function() {
       situacaoAtual: "Situação Atual",
       nomeCriad: "Nome CRIAD",
       responsavelNome: "Responsável",
-      datasTexto: "Data de Atendimento",
+      datasTexto: "Data de Atendimento"
     };
     const headers = Object.values(mapping);
     let csvContent = headers.map(h => `"${h}"`).join(";") + "\n";
-
+  
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
@@ -559,9 +570,9 @@ document.addEventListener("DOMContentLoaded", function() {
         fullData.responsavelNome,
         fullData.datasTexto
       ];
-      csvContent += rowData.map(val => `"${(val||"").replace(/"/g,'""')}"`).join(";") + "\n";
+      csvContent += rowData.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(";") + "\n";
     });
-
+  
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -569,7 +580,7 @@ document.addEventListener("DOMContentLoaded", function() {
     link.download = "casos_proteja.csv";
     link.click();
   });
-
+  
   btnExportXLS.addEventListener("click", function() {
     const mapping = {
       numeroProntuario: "Nº Prontuário",
@@ -577,7 +588,7 @@ document.addEventListener("DOMContentLoaded", function() {
       situacaoAtual: "Situação Atual",
       nomeCriad: "Nome CRIAD",
       responsavelNome: "Responsável",
-      datasTexto: "Data de Atendimento",
+      datasTexto: "Data de Atendimento"
     };
     const headers = Object.values(mapping);
     let tableHTML = `<table><thead><tr>`;
@@ -585,7 +596,7 @@ document.addEventListener("DOMContentLoaded", function() {
       tableHTML += `<th>${h}</th>`;
     });
     tableHTML += `</tr></thead><tbody>`;
-
+  
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
@@ -602,7 +613,7 @@ document.addEventListener("DOMContentLoaded", function() {
       tableHTML += "<tr>" + rowData.map(val => `<td>${val || ""}</td>`).join("") + "</tr>";
     });
     tableHTML += `</tbody></table>`;
-
+  
     const html = `<html><head><meta charset="UTF-8"/></head><body>${tableHTML}</body></html>`;
     const blob = new Blob([html], { type: "application/vnd.ms-excel" });
     const url = URL.createObjectURL(blob);
@@ -611,14 +622,14 @@ document.addEventListener("DOMContentLoaded", function() {
     link.download = "casos_proteja.xls";
     link.click();
   });
-
+  
   btnExportPDF.addEventListener("click", function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("l", "pt", "a3");
     doc.setFontSize(6);
     doc.text("Casos PROTEJA - Relatório", 40, 40);
     const pageWidth = doc.internal.pageSize.getWidth();
-
+  
     const mapping = {
       numeroProntuario: "Nº Prontuário",
       dataEntrada: "Data Entrada",
@@ -628,7 +639,7 @@ document.addEventListener("DOMContentLoaded", function() {
       datasTexto: "Data de Atendimento"
     };
     const headers = Object.values(mapping);
-
+  
     const data = [];
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
@@ -645,7 +656,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ];
       data.push(rowData);
     });
-
+  
     doc.autoTable({
       head: [headers],
       body: data,
@@ -660,7 +671,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     doc.save("casos_proteja.pdf");
   });
-
+  
   // ===================
   //  CARREGAR DADOS DO DB AO INICIAR
   // ===================
