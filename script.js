@@ -7,7 +7,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
 import {
-  getDatabase, ref, push, set, onValue, update
+  getDatabase, ref, push, set, onValue, update, 
+  query, orderByChild, equalTo, get
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 
 // ==================
@@ -24,7 +25,6 @@ const firebaseConfig = {
   measurementId: "G-K7BJHJ8DYG"
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 getAnalytics(app);
 const database = getDatabase(app);
@@ -34,18 +34,26 @@ const database = getDatabase(app);
 // ==================
 document.addEventListener("DOMContentLoaded", function() {
   /*******************
-   * CREDENCIAIS FIXAS
+   * CREDENCIAIS FIXAS (login fixo para testes)
    *******************/
   const VALID_USERNAME = "Proteja";
   const VALID_PASSWORD = "Proteja";
 
   /*******************
-   * SELETORES DOM
+   * SELETORES DOM – Telas de Login, Registro e App
    *******************/
   const loginSection = document.getElementById("login-section");
   const loginForm = document.getElementById("login-form");
   const appSection = document.getElementById("app-section");
 
+  // NOVOS SELETORES PARA REGISTRO
+  const registerSection = document.getElementById("register-section");
+  const registerForm = document.getElementById("register-form");
+  const linkRegister = document.getElementById("link-register");
+  const linkLogin = document.getElementById("link-login");
+  const mostrarSenhaReg = document.getElementById("mostrar-senha-reg");
+
+  // Seletores do site (casos) – permanecem os mesmos
   const btnNovoCaso = document.getElementById("btnNovoCaso");
   const btnCasosSalvos = document.getElementById("btnCasosSalvos");
 
@@ -110,24 +118,22 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // ===================
-  //  LOGIN (FAKE)
+  //  EVENTOS DE ALTERNÂNCIA DE TELAS (Login ↔ Registro)
   // ===================
-  loginForm.addEventListener("submit", function(e) {
+  linkRegister.addEventListener("click", function(e) {
     e.preventDefault();
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
-      loginSection.style.display = "none";
-      appSection.style.display = "block";
-      appSection.classList.add("animate__fadeIn");
-      showNotification("Login feito com Sucesso", "success");
-    } else {
-      alert("Credenciais inválidas! Tente novamente.");
-    }
-    loginForm.reset();
+    loginSection.style.display = "none";
+    registerSection.style.display = "block";
+  });
+  linkLogin.addEventListener("click", function(e) {
+    e.preventDefault();
+    registerSection.style.display = "none";
+    loginSection.style.display = "block";
   });
 
-  // Mostrar/ocultar senha
+  // ===================
+  //  EVENTO: Mostrar Senha na Tela de Login
+  // ===================
   const showPasswordCheckbox = document.getElementById("show-password");
   showPasswordCheckbox.addEventListener("change", function() {
     const passwordInput = document.getElementById("password");
@@ -135,7 +141,113 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  NAVEGAÇÃO (ABAS)
+  //  EVENTO: Ver Senha na Tela de Registro
+  // ===================
+  mostrarSenhaReg.addEventListener("change", function() {
+    const senhaInput = document.getElementById("senha");
+    const confirmarSenhaInput = document.getElementById("confirmar-senha");
+    senhaInput.type = this.checked ? "text" : "password";
+    confirmarSenhaInput.type = this.checked ? "text" : "password";
+  });
+
+  // ===================
+  //  REGISTRO DE NOVA CONTA
+  // ===================
+  registerForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+    console.log("Register form submitted"); // Verifica se o evento é disparado
+
+    const emailNumero = document.getElementById("email-numero").value.trim();
+    const senha = document.getElementById("senha").value;
+    const confirmarSenha = document.getElementById("confirmar-senha").value;
+
+    if (senha !== confirmarSenha) {
+      showNotification("As senhas não coincidem!", "danger");
+      return;
+    }
+
+    console.log("Salvando nova conta:", emailNumero, senha);
+
+    // Salva a nova conta no nó "usuarios"
+    const usuariosRef = ref(database, "usuarios");
+    const newUserRef = push(usuariosRef);
+    const userData = { emailNumero, senha }; // Em produção, utilize Firebase Auth
+
+    set(newUserRef, userData)
+      .then(() => {
+        showNotification("Conta criada com sucesso!", "success");
+        registerForm.reset();
+        // Volta para a tela de login
+        registerSection.style.display = "none";
+        loginSection.style.display = "block";
+      })
+      .catch(err => {
+        console.error("Erro ao criar a conta", err);
+        showNotification("Erro ao criar a conta!", "danger");
+      });
+  });
+
+  // ===================
+  //  LOGIN (FAKE) + CONSULTA DB
+  // ===================
+  loginForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
+      loginSuccess();
+    } else {
+      const usuariosRef = ref(database, "usuarios");
+      const q = query(usuariosRef, orderByChild("emailNumero"), equalTo(username));
+      get(q)
+        .then(snapshot => {
+          if (snapshot.exists()) {
+            let found = false;
+            snapshot.forEach(childSnapshot => {
+              const user = childSnapshot.val();
+              if (user.senha === password) {
+                found = true;
+              }
+            });
+            if (found) {
+              loginSuccess();
+            } else {
+              alert("Senha incorreta!");
+            }
+          } else {
+            alert("Usuário não encontrado!");
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Erro no login!");
+        });
+    }
+    loginForm.reset();
+  });
+
+  function loginSuccess() {
+    loginSection.style.display = "none";
+    appSection.style.display = "block";
+    appSection.classList.add("animate__fadeIn");
+    showNotification("Login feito com Sucesso", "success");
+  }
+
+  // ===================
+  //  LOGOUT
+  // ===================
+  const btnLogout = document.getElementById("btnLogout");
+  btnLogout.addEventListener("click", function() {
+    // Oculta a área principal
+    appSection.style.display = "none";
+    // Mostra a tela de login
+    loginSection.style.display = "block";
+    // Mensagem opcional
+    showNotification("Você saiu com sucesso!", "info");
+  });
+
+  // ===================
+  //  LÓGICA DO SITE (CASOS)
   // ===================
   btnNovoCaso.addEventListener("click", () => {
     formSection.style.display = "block";
@@ -203,22 +315,21 @@ document.addEventListener("DOMContentLoaded", function() {
       const cells = row.querySelectorAll("td");
       if (!cells.length) return;
       const txtProntuario = cells[0].innerText.toLowerCase();
-      const txtCriad = cells[3].innerText.toLowerCase(); // 3 -> Nome da CRIAD (4ª coluna)
-
+      const txtCriad = cells[3].innerText.toLowerCase(); // 3 -> Nome da CRIAD
+  
       let matchProntuario = !valProntuario || txtProntuario.includes(valProntuario);
       let matchCriad = !valCriad || txtCriad.includes(valCriad);
-
-      // Pega os dados do row
+  
       let fullData;
       try {
         fullData = JSON.parse(row.getAttribute("data-full"));
       } catch(e) {
         fullData = {};
       }
-
+  
       let matchMes = true;
       let displayDates = fullData.datasTexto; // Padrão
-
+  
       if (valMes && fullData.mapaDatas) {
         if (fullData.mapaDatas[valMes] && fullData.mapaDatas[valMes].length > 0) {
           matchMes = true;
@@ -227,22 +338,21 @@ document.addEventListener("DOMContentLoaded", function() {
           matchMes = false;
         }
       }
-
+  
       if (!matchProntuario || !matchCriad || !matchMes) {
         row.style.display = "none";
       } else {
         row.style.display = "";
-        // Atualiza a célula de datas (6ª coluna)
         cells[5].innerText = displayDates;
       }
     });
     showPage(1);
   }, 300);
-
+  
   filtroProntuario.addEventListener("keyup", debouncedFilter);
   filtroCriad.addEventListener("keyup", debouncedFilter);
   filtroMes.addEventListener("change", debouncedFilter);
-
+  
   // ===================
   //  SALVAR/ATUALIZAR CASO
   // ===================
@@ -272,8 +382,7 @@ document.addEventListener("DOMContentLoaded", function() {
       datasTexto: document.getElementById("datas-atendimento").value,
       tecnicosReferencia: document.getElementById("tecnicos-referencia").value
     };
-
-    // Mapeia datas para filtragem por mês
+  
     let mapaDatas = {};
     const arrDatas = fullData.datasTexto.split(",");
     arrDatas.forEach(d => {
@@ -286,12 +395,10 @@ document.addEventListener("DOMContentLoaded", function() {
       mapaDatas[mes].push(dataLimpa);
     });
     fullData.mapaDatas = mapaDatas;
-
-    // Salvar no Firebase Realtime Database
+  
     const casosRef = ref(database, "casos");
-
+  
     if (editingRow && editingKey) {
-      // Atualizar
       update(ref(database, "casos/" + editingKey), fullData)
         .then(() => {
           showNotification("Alteração com Sucesso (DB)", "success");
@@ -303,7 +410,6 @@ document.addEventListener("DOMContentLoaded", function() {
       editingRow = null;
       editingKey = null;
     } else {
-      // Criar novo
       const newCaseRef = push(casosRef);
       set(newCaseRef, fullData)
         .then(() => {
@@ -314,9 +420,7 @@ document.addEventListener("DOMContentLoaded", function() {
           showNotification("Erro ao salvar no DB", "danger");
         });
     }
-
-    // Também atualiza/cria a linha localmente (como no código original),
-    // mas agora com 6 <td> antes das ações
+  
     const summaryHTML = `
       <td>${fullData.numeroProntuario}</td>
       <td>${fullData.dataEntrada}</td>
@@ -344,16 +448,15 @@ document.addEventListener("DOMContentLoaded", function() {
     newRow.setAttribute("data-full", JSON.stringify(fullData));
     caseForm.reset();
   });
-
+  
   // ===================
   //  DETALHES E EDIÇÃO
   // ===================
   caseTableBody.addEventListener("click", function(e) {
     const row = e.target.closest("tr");
     if (!row) return;
-
+  
     if (e.target.classList.contains("btnDetalhes")) {
-      // Mostrar/ocultar linha de detalhes
       if (row.nextElementSibling && row.nextElementSibling.classList.contains("details-row")) {
         row.parentNode.removeChild(row.nextElementSibling);
       } else {
@@ -383,21 +486,18 @@ document.addEventListener("DOMContentLoaded", function() {
           <tr><td><strong>Datas de atendimentos</strong></td><td>${fullData.datasTexto}</td></tr>
           <tr><td><strong>Técnicos de referência</strong></td><td>${fullData.tecnicosReferencia}</td></tr>
         </table>`;
-
+  
         const detailsRow = document.createElement("tr");
         detailsRow.classList.add("details-row", "animate__animated", "animate__fadeIn");
         const detailsCell = document.createElement("td");
-        detailsCell.colSpan = row.children.length; // 7 colunas
+        detailsCell.colSpan = row.children.length;
         detailsCell.innerHTML = detailsHTML;
         detailsRow.appendChild(detailsCell);
         row.parentNode.insertBefore(detailsRow, row.nextSibling);
       }
     }
     else if (e.target.classList.contains("btnEditar")) {
-      // Editar
       const fullData = JSON.parse(row.getAttribute("data-full"));
-
-      // Preenche o formulário
       document.getElementById("numero-prontuario").value = fullData.numeroProntuario || "";
       document.getElementById("data-entrada").value = fullData.dataEntrada || "";
       document.getElementById("documento-origem").value = fullData.docOrigem || "";
@@ -421,11 +521,10 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById("outras-pendencias").value = fullData.outrasPendencias || "";
       document.getElementById("datas-atendimento").value = fullData.datasTexto || "";
       document.getElementById("tecnicos-referencia").value = fullData.tecnicosReferencia || "";
-
+  
       editingRow = row;
-      editingKey = row.getAttribute("data-key") || null; // se tiver key, guardamos
-
-      // Mostra a aba de formulário
+      editingKey = row.getAttribute("data-key") || null;
+  
       formSection.style.display = "block";
       listSection.style.display = "none";
       formSection.classList.add("animate__fadeIn");
@@ -433,9 +532,8 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  EXPORTAÇÕES
+  //  EXPORTAÇÕES (CSV, XLS, PDF)
   // ===================
-  // CSV
   btnExportCSV.addEventListener("click", function() {
     const mapping = {
       numeroProntuario: "Nº Prontuário",
@@ -445,8 +543,6 @@ document.addEventListener("DOMContentLoaded", function() {
       responsavelNome: "Responsável",
       datasTexto: "Data de Atendimento",
     };
-    // Se quiser incluir todos, basta adicionar no mapping e no rowData
-
     const headers = Object.values(mapping);
     let csvContent = headers.map(h => `"${h}"`).join(";") + "\n";
 
@@ -455,7 +551,6 @@ document.addEventListener("DOMContentLoaded", function() {
       const dataAttr = row.getAttribute("data-full");
       if (!dataAttr) return;
       const fullData = JSON.parse(dataAttr);
-
       const rowData = [
         fullData.numeroProntuario,
         fullData.dataEntrada,
@@ -475,7 +570,6 @@ document.addEventListener("DOMContentLoaded", function() {
     link.click();
   });
 
-  // XLS
   btnExportXLS.addEventListener("click", function() {
     const mapping = {
       numeroProntuario: "Nº Prontuário",
@@ -486,7 +580,6 @@ document.addEventListener("DOMContentLoaded", function() {
       datasTexto: "Data de Atendimento",
     };
     const headers = Object.values(mapping);
-
     let tableHTML = `<table><thead><tr>`;
     headers.forEach(h => {
       tableHTML += `<th>${h}</th>`;
@@ -498,7 +591,6 @@ document.addEventListener("DOMContentLoaded", function() {
       const dataAttr = row.getAttribute("data-full");
       if (!dataAttr) return;
       const fullData = JSON.parse(dataAttr);
-
       const rowData = [
         fullData.numeroProntuario,
         fullData.dataEntrada,
@@ -507,7 +599,7 @@ document.addEventListener("DOMContentLoaded", function() {
         fullData.responsavelNome,
         fullData.datasTexto
       ];
-      tableHTML += "<tr>" + rowData.map(val => `<td>${val||""}</td>`).join("") + "</tr>";
+      tableHTML += "<tr>" + rowData.map(val => `<td>${val || ""}</td>`).join("") + "</tr>";
     });
     tableHTML += `</tbody></table>`;
 
@@ -520,7 +612,6 @@ document.addEventListener("DOMContentLoaded", function() {
     link.click();
   });
 
-  // PDF
   btnExportPDF.addEventListener("click", function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("l", "pt", "a3");
@@ -574,14 +665,10 @@ document.addEventListener("DOMContentLoaded", function() {
   //  CARREGAR DADOS DO DB AO INICIAR
   // ===================
   onValue(ref(database, "casos"), (snapshot) => {
-    // Limpa a tabela
     caseTableBody.innerHTML = "";
-
     snapshot.forEach(childSnapshot => {
       const childKey = childSnapshot.key;
       const fullData = childSnapshot.val();
-
-      // Monta a linha com 6 colunas + Ações
       const newRow = document.createElement("tr");
       newRow.innerHTML = `
         <td>${fullData.numeroProntuario || ""}</td>
@@ -597,11 +684,8 @@ document.addEventListener("DOMContentLoaded", function() {
       `;
       newRow.setAttribute("data-full", JSON.stringify(fullData));
       newRow.setAttribute("data-key", childKey);
-
       caseTableBody.appendChild(newRow);
     });
-
-    // Atualiza paginação/filtro
     showPage(1);
   });
 });
