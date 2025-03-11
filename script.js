@@ -41,19 +41,19 @@ const auth = getAuth(app);
 //  LÓGICA PRINCIPAL
 // ==================
 document.addEventListener("DOMContentLoaded", function() {
-  // ========== SELETORES PRINCIPAIS ==========
+  // Seletores das telas de autenticação e do app
   const loginSection = document.getElementById("login-section");
   const loginForm = document.getElementById("login-form");
   const appSection = document.getElementById("app-section");
 
-  // Registro
+  // Seletores para registro
   const registerSection = document.getElementById("register-section");
   const registerForm = document.getElementById("register-form");
   const linkRegister = document.getElementById("link-register");
   const linkLogin = document.getElementById("link-login");
   const mostrarSenhaReg = document.getElementById("mostrar-senha-reg");
 
-  // Botão Logout
+  // Botão de logout
   const btnLogout = document.getElementById("btnLogout");
 
   // Seletores do site (casos)
@@ -81,6 +81,33 @@ document.addEventListener("DOMContentLoaded", function() {
 
   let editingRow = null;
   let editingKey = null; // chave do registro no DB, se for edição
+
+  // Mapeamento para exportações (incluindo todos os campos)
+  const exportMapping = {
+    numeroProntuario: "Nº Prontuário",
+    dataEntrada: "Data Entrada",
+    docOrigem: "Documento de Origem",
+    origemCaso: "Origem do Caso",
+    cor: "Cor",
+    detalheOrigem: "Detalhamento da Origem",
+    situacaoAtual: "Situação Atual",
+    detalheSituacao: "Detalhamento da Situação",
+    nomeCriad: "Nome CRIAD",
+    responsavelNome: "Responsável",
+    responsavelCpf: "CPF",
+    comunicacaoViolencia: "Comunicação da Violência",
+    oficioViolencia: "Ofício Violência",
+    encaminhamentosSolicitados: "Encaminhamentos Solicitados",
+    detalheEncaminhamento: "Detalhamento do Encaminhamento",
+    dataOficioEnc: "Data/Ofício Enc.",
+    retornoSolicitado: "Retorno Solicitado",
+    infoRetorno: "Info Retorno",
+    estudoCaso: "Estudo de Caso",
+    piaElaborado: "PIA Elaborado",
+    outrasPendencias: "Outras Pendências",
+    datasTexto: "Datas de Atendimento",
+    tecnicosReferencia: "Técnicos de Referência"
+  };
 
   // ===================
   //  FUNÇÕES AUXILIARES
@@ -120,7 +147,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // ===================
-  //  ALTERNÂNCIA DE TELAS (LOGIN / REGISTRO)
+  //  ALTERNÂNCIA DE TELAS (LOGIN ↔ REGISTRO)
   // ===================
   linkRegister.addEventListener("click", function(e) {
     e.preventDefault();
@@ -216,7 +243,7 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  LOGOUT
+  //  LOGOUT (Firebase Auth)
   // ===================
   btnLogout.addEventListener("click", function() {
     signOut(auth)
@@ -300,7 +327,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const cells = row.querySelectorAll("td");
       if (!cells.length) return;
       const txtProntuario = cells[0].innerText.toLowerCase();
-      const txtCriad = cells[3].innerText.toLowerCase(); // Nome da CRIAD
+      const txtCriad = cells[3].innerText.toLowerCase();
   
       let matchProntuario = !valProntuario || txtProntuario.includes(valProntuario);
       let matchCriad = !valCriad || txtCriad.includes(valCriad);
@@ -515,38 +542,25 @@ document.addEventListener("DOMContentLoaded", function() {
       formSection.classList.add("animate__fadeIn");
     }
   });
-
+  
   // ===================
   //  EXPORTAÇÕES (CSV, XLS, PDF)
   // ===================
   btnExportCSV.addEventListener("click", function() {
-    const mapping = {
-      numeroProntuario: "Nº Prontuário",
-      dataEntrada: "Data Entrada",
-      situacaoAtual: "Situação Atual",
-      nomeCriad: "Nome CRIAD",
-      responsavelNome: "Responsável",
-      datasTexto: "Data de Atendimento"
-    };
-    const headers = Object.values(mapping);
+    const headers = Object.values(exportMapping);
     let csvContent = headers.map(h => `"${h}"`).join(";") + "\n";
-
+  
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
       if (!dataAttr) return;
       const fullData = JSON.parse(dataAttr);
-      const rowData = [
-        fullData.numeroProntuario,
-        fullData.dataEntrada,
-        fullData.situacaoAtual,
-        fullData.nomeCriad,
-        fullData.responsavelNome,
-        fullData.datasTexto
-      ];
-      csvContent += rowData.map(val => `"${(val||"").replace(/"/g,'""')}"`).join(";") + "\n";
+      const rowData = Object.keys(exportMapping).map(key => {
+        return `"${(fullData[key] || "").toString().replace(/"/g, '""')}"`;
+      });
+      csvContent += rowData.join(";") + "\n";
     });
-
+  
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -554,40 +568,25 @@ document.addEventListener("DOMContentLoaded", function() {
     link.download = "casos_proteja.csv";
     link.click();
   });
-
+  
   btnExportXLS.addEventListener("click", function() {
-    const mapping = {
-      numeroProntuario: "Nº Prontuário",
-      dataEntrada: "Data Entrada",
-      situacaoAtual: "Situação Atual",
-      nomeCriad: "Nome CRIAD",
-      responsavelNome: "Responsável",
-      datasTexto: "Data de Atendimento"
-    };
-    const headers = Object.values(mapping);
+    const headers = Object.values(exportMapping);
     let tableHTML = `<table><thead><tr>`;
     headers.forEach(h => {
       tableHTML += `<th>${h}</th>`;
     });
     tableHTML += `</tr></thead><tbody>`;
-
+  
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
       if (!dataAttr) return;
       const fullData = JSON.parse(dataAttr);
-      const rowData = [
-        fullData.numeroProntuario,
-        fullData.dataEntrada,
-        fullData.situacaoAtual,
-        fullData.nomeCriad,
-        fullData.responsavelNome,
-        fullData.datasTexto
-      ];
-      tableHTML += "<tr>" + rowData.map(val => `<td>${val || ""}</td>`).join("") + "</tr>";
+      const rowData = Object.keys(exportMapping).map(key => fullData[key] || "");
+      tableHTML += "<tr>" + rowData.map(val => `<td>${val}</td>`).join("") + "</tr>";
     });
     tableHTML += `</tbody></table>`;
-
+  
     const html = `<html><head><meta charset="UTF-8"/></head><body>${tableHTML}</body></html>`;
     const blob = new Blob([html], { type: "application/vnd.ms-excel" });
     const url = URL.createObjectURL(blob);
@@ -596,41 +595,25 @@ document.addEventListener("DOMContentLoaded", function() {
     link.download = "casos_proteja.xls";
     link.click();
   });
-
+  
   btnExportPDF.addEventListener("click", function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("l", "pt", "a3");
     doc.setFontSize(6);
     doc.text("Casos PROTEJA - Relatório", 40, 40);
     const pageWidth = doc.internal.pageSize.getWidth();
-
-    const mapping = {
-      numeroProntuario: "Nº Prontuário",
-      dataEntrada: "Data Entrada",
-      situacaoAtual: "Situação Atual",
-      nomeCriad: "Nome CRIAD",
-      responsavelNome: "Responsável",
-      datasTexto: "Data de Atendimento"
-    };
-    const headers = Object.values(mapping);
-
+  
+    const headers = Object.values(exportMapping);
     const data = [];
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
       if (!dataAttr) return;
       const fullData = JSON.parse(dataAttr);
-      const rowData = [
-        fullData.numeroProntuario,
-        fullData.dataEntrada,
-        fullData.situacaoAtual,
-        fullData.nomeCriad,
-        fullData.responsavelNome,
-        fullData.datasTexto
-      ];
+      const rowData = Object.keys(exportMapping).map(key => fullData[key] || "");
       data.push(rowData);
     });
-
+  
     doc.autoTable({
       head: [headers],
       body: data,
@@ -645,7 +628,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     doc.save("casos_proteja.pdf");
   });
-
+  
   // ===================
   //  CARREGAR DADOS DO DB AO INICIAR
   // ===================
