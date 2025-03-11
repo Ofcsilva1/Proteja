@@ -15,7 +15,6 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail,
   signOut
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -36,28 +35,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 getAnalytics(app);
 const database = getDatabase(app);
-// Inicializa o Firebase Auth
 const auth = getAuth(app);
 
 // ==================
 //  LÓGICA PRINCIPAL
 // ==================
 document.addEventListener("DOMContentLoaded", function() {
-  /*******************
-   * SELETORES DOM – Telas de Login, Registro e App
-   *******************/
+  // ========== SELETORES PRINCIPAIS ==========
   const loginSection = document.getElementById("login-section");
   const loginForm = document.getElementById("login-form");
   const appSection = document.getElementById("app-section");
 
-  // Seletores para Registro
+  // Registro
   const registerSection = document.getElementById("register-section");
   const registerForm = document.getElementById("register-form");
   const linkRegister = document.getElementById("link-register");
   const linkLogin = document.getElementById("link-login");
   const mostrarSenhaReg = document.getElementById("mostrar-senha-reg");
-  // Link para "Esqueceu a senha?"
-  const linkReset = document.getElementById("link-reset");
+
+  // Botão Logout
+  const btnLogout = document.getElementById("btnLogout");
 
   // Seletores do site (casos)
   const btnNovoCaso = document.getElementById("btnNovoCaso");
@@ -114,7 +111,6 @@ document.addEventListener("DOMContentLoaded", function() {
     return nomesMes[mes - 1];
   }
 
-  // Debounce
   function debounce(func, delay) {
     let timeout;
     return function(...args) {
@@ -124,7 +120,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // ===================
-  //  EVENTOS DE ALTERNÂNCIA DE TELAS (Login ↔ Registro)
+  //  ALTERNÂNCIA DE TELAS (LOGIN / REGISTRO)
   // ===================
   linkRegister.addEventListener("click", function(e) {
     e.preventDefault();
@@ -138,7 +134,7 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  EVENTO: Mostrar Senha na Tela de Login
+  //  MOSTRAR SENHA NO LOGIN
   // ===================
   const showPasswordCheckbox = document.getElementById("show-password");
   showPasswordCheckbox.addEventListener("change", function() {
@@ -147,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  EVENTO: Ver Senha na Tela de Registro
+  //  MOSTRAR SENHA NO REGISTRO
   // ===================
   mostrarSenhaReg.addEventListener("change", function() {
     const senhaInput = document.getElementById("senha");
@@ -157,11 +153,10 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  REGISTRO DE NOVA CONTA (usando Firebase Auth)
+  //  REGISTRO DE NOVA CONTA (Firebase Auth)
   // ===================
   registerForm.addEventListener("submit", function(e) {
     e.preventDefault();
-    console.log("Register form submitted");
     const emailNumero = document.getElementById("email-numero").value.trim();
     const senha = document.getElementById("senha").value;
     const confirmarSenha = document.getElementById("confirmar-senha").value;
@@ -170,12 +165,11 @@ document.addEventListener("DOMContentLoaded", function() {
       showNotification("As senhas não coincidem!", "danger");
       return;
     }
-    // Cria a conta via Firebase Auth
+
     createUserWithEmailAndPassword(auth, emailNumero, senha)
       .then((userCredential) => {
         showNotification("Conta criada com sucesso!", "success");
         registerForm.reset();
-        // Volta para a tela de login
         registerSection.style.display = "none";
         loginSection.style.display = "block";
       })
@@ -183,6 +177,8 @@ document.addEventListener("DOMContentLoaded", function() {
         console.error("Erro no registro:", error);
         if (error.code === 'auth/email-already-in-use') {
           showNotification("Este usuário já existe!", "danger");
+        } else if (error.code === 'auth/invalid-email') {
+          showNotification("E-mail inválido!", "danger");
         } else {
           showNotification("Erro ao criar a conta!", "danger");
         }
@@ -190,35 +186,19 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ===================
-  //  ESQUECEU A SENHA (Recuperação)
-  // ===================
-  linkReset.addEventListener("click", function(e) {
-    e.preventDefault();
-    const email = document.getElementById("username").value.trim();
-    if (!email) {
-      alert("Por favor, informe seu e-mail/número no campo de usuário para recuperar a senha.");
-      return;
-    }
-    sendPasswordResetEmail(auth, email)
-      .then(() => {
-        showNotification("E-mail de redefinição de senha enviado!", "info");
-      })
-      .catch((error) => {
-        console.error("Erro ao enviar e-mail de redefinição:", error);
-        alert("Erro ao enviar e-mail de redefinição!");
-      });
-  });
-
-  // ===================
-  //  LOGIN (usando Firebase Auth)
+  //  LOGIN (Firebase Auth)
   // ===================
   loginForm.addEventListener("submit", function(e) {
     e.preventDefault();
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
+
     signInWithEmailAndPassword(auth, username, password)
       .then((userCredential) => {
-        loginSuccess();
+        loginSection.style.display = "none";
+        appSection.style.display = "block";
+        appSection.classList.add("animate__fadeIn");
+        showNotification("Login feito com Sucesso", "success");
       })
       .catch((error) => {
         console.error("Erro no login:", error);
@@ -226,6 +206,8 @@ document.addEventListener("DOMContentLoaded", function() {
           alert("Senha incorreta!");
         } else if (error.code === 'auth/user-not-found') {
           alert("Usuário não encontrado!");
+        } else if (error.code === 'auth/invalid-email') {
+          alert("Formato de e-mail inválido!");
         } else {
           alert("Erro no login!");
         }
@@ -233,17 +215,9 @@ document.addEventListener("DOMContentLoaded", function() {
     loginForm.reset();
   });
 
-  function loginSuccess() {
-    loginSection.style.display = "none";
-    appSection.style.display = "block";
-    appSection.classList.add("animate__fadeIn");
-    showNotification("Login feito com Sucesso", "success");
-  }
-
   // ===================
-  //  LOGOUT (usando Firebase Auth)
+  //  LOGOUT
   // ===================
-  const btnLogout = document.getElementById("btnLogout");
   btnLogout.addEventListener("click", function() {
     signOut(auth)
       .then(() => {
@@ -541,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function() {
       formSection.classList.add("animate__fadeIn");
     }
   });
-  
+
   // ===================
   //  EXPORTAÇÕES (CSV, XLS, PDF)
   // ===================
@@ -556,7 +530,7 @@ document.addEventListener("DOMContentLoaded", function() {
     };
     const headers = Object.values(mapping);
     let csvContent = headers.map(h => `"${h}"`).join(";") + "\n";
-  
+
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
@@ -570,9 +544,9 @@ document.addEventListener("DOMContentLoaded", function() {
         fullData.responsavelNome,
         fullData.datasTexto
       ];
-      csvContent += rowData.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(";") + "\n";
+      csvContent += rowData.map(val => `"${(val||"").replace(/"/g,'""')}"`).join(";") + "\n";
     });
-  
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -580,7 +554,7 @@ document.addEventListener("DOMContentLoaded", function() {
     link.download = "casos_proteja.csv";
     link.click();
   });
-  
+
   btnExportXLS.addEventListener("click", function() {
     const mapping = {
       numeroProntuario: "Nº Prontuário",
@@ -596,7 +570,7 @@ document.addEventListener("DOMContentLoaded", function() {
       tableHTML += `<th>${h}</th>`;
     });
     tableHTML += `</tr></thead><tbody>`;
-  
+
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
       const dataAttr = row.getAttribute("data-full");
@@ -613,7 +587,7 @@ document.addEventListener("DOMContentLoaded", function() {
       tableHTML += "<tr>" + rowData.map(val => `<td>${val || ""}</td>`).join("") + "</tr>";
     });
     tableHTML += `</tbody></table>`;
-  
+
     const html = `<html><head><meta charset="UTF-8"/></head><body>${tableHTML}</body></html>`;
     const blob = new Blob([html], { type: "application/vnd.ms-excel" });
     const url = URL.createObjectURL(blob);
@@ -622,14 +596,14 @@ document.addEventListener("DOMContentLoaded", function() {
     link.download = "casos_proteja.xls";
     link.click();
   });
-  
+
   btnExportPDF.addEventListener("click", function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("l", "pt", "a3");
     doc.setFontSize(6);
     doc.text("Casos PROTEJA - Relatório", 40, 40);
     const pageWidth = doc.internal.pageSize.getWidth();
-  
+
     const mapping = {
       numeroProntuario: "Nº Prontuário",
       dataEntrada: "Data Entrada",
@@ -639,7 +613,7 @@ document.addEventListener("DOMContentLoaded", function() {
       datasTexto: "Data de Atendimento"
     };
     const headers = Object.values(mapping);
-  
+
     const data = [];
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
@@ -656,7 +630,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ];
       data.push(rowData);
     });
-  
+
     doc.autoTable({
       head: [headers],
       body: data,
@@ -671,7 +645,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     doc.save("casos_proteja.pdf");
   });
-  
+
   // ===================
   //  CARREGAR DADOS DO DB AO INICIAR
   // ===================
