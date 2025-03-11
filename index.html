@@ -1,270 +1,196 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Controle Geral de Casos - PROTEJA</title>
+<div class="tab-content" id="form-tabs-content">
 
-  <!-- Google Fonts (Rubik) -->
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet" />
-
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-
-  <!-- Animate.css -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-
-  <!-- Bootstrap Icons (opcional) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" />
-
-  <!-- Seu CSS -->
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
-<!-- ===================== CABEÇALHO ===================== -->
-<header class="fancy-header">
-  <div class="shape shape1"></div>
-  <div class="shape shape2"></div>
-  <div class="shape shape3"></div>
-  <div class="header-content">
-    <h1 class="animate__animated animate__fadeInLeft">
-      Controle Geral de Casos - <strong>PROTEJA</strong>
-    </h1>
+  <!-- ABA: Identificação do Caso -->
+  <div class="tab-pane fade show active" id="identificacao-caso" role="tabpanel" aria-labelledby="tab-identificacao-caso">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Identificação do Caso</legend>
+      <div class="mb-2">
+        <label for="numero-prontuario" class="form-label">Número do Prontuário:</label>
+        <input type="text" id="numero-prontuario" class="form-control" required />
+      </div>
+      <div class="mb-2">
+        <label for="data-entrada" class="form-label">Data de Entrada no PROTEJA:</label>
+        <input type="date" id="data-entrada" class="form-control" required />
+      </div>
+      <div class="mb-2">
+        <label for="documento-origem" class="form-label">Documento de origem (se houver):</label>
+        <input type="text" id="documento-origem" class="form-control" />
+      </div>
+      <div class="mb-2">
+        <label for="origem-caso" class="form-label">Origem do caso recebido:</label>
+        <select id="origem-caso" class="form-select">
+          <option value="demanda_criad">Demanda espontânea da CRIAD</option>
+          <option value="demanda_responsavel">Demanda espontânea do responsável</option>
+          <option value="enc_dercca">Encaminhamento da DERRCA</option>
+          <option value="enc_ct">Encaminhamento do CT</option>
+          <option value="enc_mp">Encaminhamento do MP</option>
+          <option value="enc_assist_social">Encaminhamento da Assist. Social</option>
+          <option value="enc_educacao">Encaminhamento Educação</option>
+          <option value="enc_saude">Encaminhamento da Saúde</option>
+          <option value="enc_outra_rede">Encaminhamento de outro órgão</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label for="cor" class="form-label">COR (Etnia/Cor):</label>
+        <select id="cor" class="form-select">
+          <option value="pardo">Pardo(a)</option>
+          <option value="branco">Branco(a)</option>
+          <option value="preto">Preto(a)</option>
+          <option value="indigena">Indígena</option>
+          <option value="amarelo">Amarelo(a)</option>
+          <option value="nao_informado">Não Informado</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label for="detalhe-origem" class="form-label">Detalhamento da origem:</label>
+        <textarea id="detalhe-origem" class="form-control"></textarea>
+      </div>
+    </fieldset>
   </div>
-</header>
 
-<!-- Container para notificações (alertas) -->
-<div id="notification-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1100;"></div>
+  <!-- ABA: Situação Atual -->
+  <div class="tab-pane fade" id="situacao-atual-tab" role="tabpanel" aria-labelledby="tab-situacao-atual">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Situação Atual</legend>
+      <div class="mb-2">
+        <label for="situacao-atual" class="form-label">Situação Atual:</label>
+        <select id="situacao-atual" class="form-select">
+          <option value="ativo">Ativo</option>
+          <option value="suspenso">Suspenso</option>
+          <option value="encerrado_com_protecao">Encerrado com proteção</option>
+          <option value="encerrado_sem_protecao">Encerrado sem proteção</option>
+          <option value="nao_competencia">Não é competência do PROTEJA</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label for="detalhe-situacao" class="form-label">Detalhamento da Situação:</label>
+        <textarea id="detalhe-situacao" class="form-control"></textarea>
+      </div>
+    </fieldset>
+  </div>
 
-<!-- ===================== CONTEÚDO PRINCIPAL ===================== -->
-<div class="container my-4">
-  <!-- Seção de Login -->
-  <section id="login-section" class="card mx-auto p-4">
-    <h2 class="mb-3">Login</h2>
-    <form id="login-form">
-      <div class="mb-3">
-        <label for="username" class="form-label">Usuário (ou E‑mail/Número):</label>
-        <input type="text" id="username" name="username" class="form-control" required />
+  <!-- ABA: Responsável e CRIAD -->
+  <div class="tab-pane fade" id="responsavel-criad-tab" role="tabpanel" aria-labelledby="tab-responsavel-criad">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Responsável e CRIAD</legend>
+      <div class="mb-2">
+        <label for="nome-criad" class="form-label">Nome da CRIAD:</label>
+        <input type="text" id="nome-criad" class="form-control" />
       </div>
-      <div class="mb-3">
-        <label for="password" class="form-label">Senha:</label>
-        <input type="password" id="password" name="password" class="form-control" required />
+      <div class="mb-2">
+        <label for="responsavel-nome" class="form-label">Nome do(a) Responsável:</label>
+        <input type="text" id="responsavel-nome" class="form-control" />
       </div>
-      <div class="mb-3 form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="show-password" />
-        <label class="form-check-label" for="show-password">Mostrar Senha</label>
+      <div class="mb-2">
+        <label for="responsavel-cpf" class="form-label">CPF do(a) Responsável:</label>
+        <input type="text" id="responsavel-cpf" class="form-control" />
       </div>
-      <button type="submit" class="btn btn-primary w-100">Entrar</button>
-    </form>
-    <p class="mt-2 text-center">
-      Ainda não tem conta? <a href="#" id="link-register">Criar Conta</a>
-    </p>
-  </section>
+    </fieldset>
+  </div>
 
-  <!-- Seção de Criação de Conta -->
-  <section id="register-section" class="card mx-auto p-4" style="display: none;">
-    <h2 class="mb-3">Criar Conta</h2>
-    <form id="register-form">
-      <div class="mb-3">
-        <label for="email-numero" class="form-label">E‑mail ou Número:</label>
-        <input type="text" id="email-numero" class="form-control" required />
+  <!-- ABA: Comunicação da Violência -->
+  <div class="tab-pane fade" id="comunicacao-violencia-tab" role="tabpanel" aria-labelledby="tab-comunicacao-violencia">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Comunicação da Violência</legend>
+      <div class="mb-2">
+        <label for="comunicacao-violencia" class="form-label">Comunicação da Violência:</label>
+        <select id="comunicacao-violencia" class="form-select">
+          <option value="comunicacao_ct">Comunicação ao CT</option>
+          <option value="comunicacao_policia">Comunicação à Polícia</option>
+          <option value="comunicacao_mp">Comunicação ao MP</option>
+          <option value="nao">Não houve comunicação</option>
+        </select>
       </div>
-      <div class="mb-3">
-        <label for="senha" class="form-label">Senha:</label>
-        <input type="password" id="senha" class="form-control" required />
+      <div class="mb-2">
+        <label for="oficio-violencia" class="form-label">Ofício de comunicação:</label>
+        <input type="text" id="oficio-violencia" class="form-control" placeholder="Ex: 10/01/2024 - Ofício nº 123" />
       </div>
-      <div class="mb-3">
-        <label for="confirmar-senha" class="form-label">Confirmar Senha:</label>
-        <input type="password" id="confirmar-senha" class="form-control" required />
-      </div>
-      <div class="mb-3 form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="mostrar-senha-reg" />
-        <label class="form-check-label" for="mostrar-senha-reg">Ver Senha</label>
-      </div>
-      <button type="submit" class="btn btn-primary w-100">Criar Conta</button>
-    </form>
-    <p class="mt-2 text-center">
-      Já tem conta? <a href="#" id="link-login">Fazer Login</a>
-    </p>
-  </section>
+    </fieldset>
+  </div>
 
-  <!-- Seção Principal (após login) -->
-  <main id="app-section" class="animate__animated" style="display: none;">
-    <nav class="app-nav mb-3 d-flex justify-content-between">
-      <div>
-        <button id="btnNovoCaso" class="btn btn-warning">Novo Caso</button>
-        <button id="btnCasosSalvos" class="btn btn-info">Casos Salvos</button>
+  <!-- ABA: Encaminhamentos -->
+  <div class="tab-pane fade" id="encaminhamentos-tab" role="tabpanel" aria-labelledby="tab-encaminhamentos">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Encaminhamentos Solicitados</legend>
+      <div class="mb-2">
+        <label for="encaminhamentos-solicitados" class="form-label">Tipo de Encaminhamento:</label>
+        <select id="encaminhamentos-solicitados" class="form-select">
+          <option value="">-- Selecione --</option>
+          <option value="apoio_ct">Apoio ao CT</option>
+          <option value="educacao">Política de Educação</option>
+          <option value="assist_social">Política de Assist. Social</option>
+          <option value="saude">Política de Saúde</option>
+          <option value="outros">Outros</option>
+          <option value="servico_especializado">Serviço Especializado</option>
+        </select>
       </div>
-      <!-- Botão "Sair" -->
-      <div>
-        <button id="btnLogout" class="btn btn-secondary">Sair</button>
+      <div class="mb-2">
+        <label for="detalhe-encaminhamento" class="form-label">Detalhamento do Encaminhamento:</label>
+        <textarea id="detalhe-encaminhamento" class="form-control"></textarea>
       </div>
-    </nav>
-
-    <!-- Formulário de Novo Caso -->
-    <section id="form-section" class="animate__animated" style="display: none;">
-      <h2 class="mb-3">Registrar Novo Caso</h2>
-      <nav>
-        <div class="nav nav-tabs" id="form-tabs" role="tablist">
-          <button class="nav-link active" id="tab-identificacao-caso" data-bs-toggle="tab" data-bs-target="#identificacao-caso" type="button" role="tab" aria-controls="identificacao-caso" aria-selected="true">
-            Identificação do Caso
-          </button>
-          <button class="nav-link" id="tab-situacao-atual" data-bs-toggle="tab" data-bs-target="#situacao-atual-tab" type="button" role="tab" aria-controls="situacao-atual-tab" aria-selected="false">
-            Situação Atual
-          </button>
-          <button class="nav-link" id="tab-responsavel-criad" data-bs-toggle="tab" data-bs-target="#responsavel-criad-tab" type="button" role="tab" aria-controls="responsavel-criad-tab" aria-selected="false">
-            Responsável e CRIAD
-          </button>
-          <button class="nav-link" id="tab-comunicacao-violencia" data-bs-toggle="tab" data-bs-target="#comunicacao-violencia-tab" type="button" role="tab" aria-controls="comunicacao-violencia-tab" aria-selected="false">
-            Comunicação da Violência
-          </button>
-          <button class="nav-link" id="tab-encaminhamentos" data-bs-toggle="tab" data-bs-target="#encaminhamentos-tab" type="button" role="tab" aria-controls="encaminhamentos-tab" aria-selected="false">
-            Encaminhamentos
-          </button>
-          <button class="nav-link" id="tab-retorno-encaminhamento" data-bs-toggle="tab" data-bs-target="#retorno-encaminhamento-tab" type="button" role="tab" aria-controls="retorno-encaminhamento-tab" aria-selected="false">
-            Retorno Encaminhamento
-          </button>
-          <button class="nav-link" id="tab-estudo-plano" data-bs-toggle="tab" data-bs-target="#estudo-plano-tab" type="button" role="tab" aria-controls="estudo-plano-tab" aria-selected="false">
-            Estudo e Plano
-          </button>
-          <button class="nav-link" id="tab-pendencias-atendimentos" data-bs-toggle="tab" data-bs-target="#pendencias-atendimentos-tab" type="button" role="tab" aria-controls="pendencias-atendimentos-tab" aria-selected="false">
-            Pendências e Atendimentos
-          </button>
-        </div>
-      </nav>
-
-      <form id="case-form">
-        <div class="tab-content" id="form-tabs-content">
-          <!-- Aba: Identificação do Caso -->
-          <div class="tab-pane fade show active" id="identificacao-caso" role="tabpanel" aria-labelledby="tab-identificacao-caso">
-            <fieldset class="mb-3 border p-3 rounded">
-              <legend class="w-auto px-2">Identificação do Caso</legend>
-              <div class="mb-2">
-                <label for="numero-prontuario" class="form-label">Número do Prontuário:</label>
-                <input type="text" id="numero-prontuario" class="form-control" required />
-              </div>
-              <div class="mb-2">
-                <label for="data-entrada" class="form-label">Data de Entrada no PROTEJA:</label>
-                <input type="date" id="data-entrada" class="form-control" required />
-              </div>
-              <div class="mb-2">
-                <label for="documento-origem" class="form-label">Documento de origem (se houver):</label>
-                <input type="text" id="documento-origem" class="form-control" />
-              </div>
-              <div class="mb-2">
-                <label for="origem-caso" class="form-label">Origem do caso recebido:</label>
-                <select id="origem-caso" class="form-select">
-                  <option value="demanda_criad">Demanda espontânea da CRIAD</option>
-                  <option value="demanda_responsavel">Demanda espontânea do responsável</option>
-                  <option value="enc_dercca">Encaminhamento da DERRCA</option>
-                  <option value="enc_ct">Encaminhamento do CT</option>
-                  <option value="enc_mp">Encaminhamento do MP</option>
-                  <option value="enc_assist_social">Encaminhamento da Assist. Social</option>
-                  <option value="enc_educacao">Encaminhamento Educação</option>
-                  <option value="enc_saude">Encaminhamento da Saúde</option>
-                  <option value="enc_outra_rede">Encaminhamento de outro órgão</option>
-                </select>
-              </div>
-              <div class="mb-2">
-                <label for="cor" class="form-label">COR (Etnia/Cor):</label>
-                <select id="cor" class="form-select">
-                  <option value="pardo">Pardo(a)</option>
-                  <option value="branco">Branco(a)</option>
-                  <option value="preto">Preto(a)</option>
-                  <option value="indigena">Indígena</option>
-                  <option value="amarelo">Amarelo(a)</option>
-                  <option value="nao_informado">Não Informado</option>
-                </select>
-              </div>
-              <div class="mb-2">
-                <label for="detalhe-origem" class=form-label>Detalhamento da origem:</label>
-                <textarea id="detalhe-origem" class="form-control"></textarea>
-              </div>
-            </fieldset>
-          </div>
-          <!-- As demais abas permanecem inalteradas -->
-        </div>
-
-        <button type="button" id="btnSalvarCaso" class="btn btn-success">Salvar Caso</button>
-      </form>
-    </section>
-
-    <!-- Listagem de Casos -->
-    <section id="list-section" class="animate__animated" style="display: none;">
-      <h2 class="mb-3">Casos Registrados</h2>
-      <div class="list-controls mb-3">
-        <div class="row align-items-center">
-          <div class="col-md">
-            <div class="filters mb-2">
-              <div class="mb-2">
-                <label for="filtroProntuario" class="form-label"><strong>Filtrar por Nº Prontuário:</strong></label>
-                <input type="text" id="filtroProntuario" class="form-control" placeholder="Digite o nº..." />
-              </div>
-              <div class="mb-2">
-                <label for="filtroCriad" class="form-label"><strong>Filtrar por Nome da CRIAD:</strong></label>
-                <input type="text" id="filtroCriad" class="form-control" placeholder="Digite o nome da CRIAD..." />
-              </div>
-              <div class="mb-2">
-                <label for="filtroMes" class="form-label"><strong>Filtrar por Mês de Atendimento:</strong></label>
-                <select id="filtroMes" class="form-select">
-                  <option value="">(Todos os Meses)</option>
-                  <option value="Janeiro">Janeiro</option>
-                  <option value="Fevereiro">Fevereiro</option>
-                  <option value="Março">Março</option>
-                  <option value="Abril">Abril</option>
-                  <option value="Maio">Maio</option>
-                  <option value="Junho">Junho</option>
-                  <option value="Julho">Julho</option>
-                  <option value="Agosto">Agosto</option>
-                  <option value="Setembro">Setembro</option>
-                  <option value="Outubro">Outubro</option>
-                  <option value="Novembro">Novembro</option>
-                  <option value="Dezembro">Dezembro</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-auto">
-            <div class="export-buttons d-flex justify-content-end">
-              <button id="btnExportCSV" class="btn btn-secondary me-2">Exportar CSV</button>
-              <button id="btnExportXLS" class="btn btn-secondary me-2">Exportar XLS</button>
-              <button id="btnExportPDF" class="btn btn-secondary">Exportar PDF</button>
-            </div>
-          </div>
-        </div>
+      <div class="mb-2">
+        <label for="data-oficio-enc" class="form-label">Ofício (data e nº):</label>
+        <input type="text" id="data-oficio-enc" class="form-control" placeholder="Ex: 15/01/2024 - Ofício nº 456" />
       </div>
+    </fieldset>
+  </div>
 
-      <div class="table-responsive animate__animated animate__fadeIn">
-        <table id="case-table" class="table table-striped table-hover">
-          <thead>
-            <tr>
-              <th>Nº Prontuário</th>
-              <th>Data Entrada</th>
-              <th>Situação Atual</th>
-              <th>Nome da CRIAD</th>
-              <th>Responsável</th>
-              <th>Data de Atendimento</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+  <!-- ABA: Retorno Encaminhamento -->
+  <div class="tab-pane fade" id="retorno-encaminhamento-tab" role="tabpanel" aria-labelledby="tab-retorno-encaminhamento">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Retorno do Encaminhamento</legend>
+      <div class="mb-2">
+        <label for="retorno-solicitado" class="form-label">Houve retorno solicitado?</label>
+        <select id="retorno-solicitado" class="form-select">
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
       </div>
+      <div class="mb-2">
+        <label for="info-retorno" class="form-label">Informações sobre o retorno:</label>
+        <textarea id="info-retorno" class="form-control"></textarea>
+      </div>
+    </fieldset>
+  </div>
 
-      <nav id="pagination" class="mt-3"></nav>
-    </section>
-  </main>
+  <!-- ABA: Estudo e Plano -->
+  <div class="tab-pane fade" id="estudo-plano-tab" role="tabpanel" aria-labelledby="tab-estudo-plano">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Estudo de Caso e Plano</legend>
+      <div class="mb-2">
+        <label for="estudo-caso" class="form-label">Estudo de Caso elaborado?</label>
+        <select id="estudo-caso" class="form-select">
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label for="pia-elaborado" class="form-label">Plano Individual elaborado?</label>
+        <select id="pia-elaborado" class="form-select">
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
+      </div>
+    </fieldset>
+  </div>
+
+  <!-- ABA: Pendências e Atendimentos -->
+  <div class="tab-pane fade" id="pendencias-atendimentos-tab" role="tabpanel" aria-labelledby="tab-pendencias-atendimentos">
+    <fieldset class="mb-3 border p-3 rounded">
+      <legend class="w-auto px-2">Pendências e Atendimentos</legend>
+      <div class="mb-2">
+        <label for="outras-pendencias" class="form-label">Outras pendências:</label>
+        <textarea id="outras-pendencias" class="form-control"></textarea>
+      </div>
+      <div class="mb-2">
+        <label for="datas-atendimento" class="form-label">Datas de atendimentos (separe por vírgula):</label>
+        <textarea id="datas-atendimento" class="form-control" placeholder="Ex: 12/01/2024 Atendimento no Proteja, 15/03/2024 Reunião com equipe"></textarea>
+      </div>
+      <div class="mb-2">
+        <label for="tecnicos-referencia" class="form-label">Técnicos de referência:</label>
+        <input type="text" id="tecnicos-referencia" class="form-control" />
+      </div>
+    </fieldset>
+  </div>
+
 </div>
-
-<!-- Scripts do Bootstrap/jQuery etc. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.7/jquery.inputmask.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
-<!-- Script principal (ES Module) -->
-<script type="module" src="script.js"></script>
-</body>
-</html>
