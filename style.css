@@ -1,20 +1,20 @@
 /* ===================== VARIÁVEIS DE COR ===================== */
 :root {
     --cor-primaria: #aed581;       /* Verde Lima Pastel */
-    --cor-secundaria: #f48fb1;     /* Rosa Pastel */
-    --cor-terciaria: #fff9c4;      /* Amarelo Creme/Pálido */
-    --cor-fundo-principal: #f8f9fa;/* Branco Off-White */
-    --cor-texto-principal: #495057;/* Cinza Escuro */
-    --cor-texto-secundaria: #6c757d;/* Cinza Médio */
-    --cor-borda-sutil: #dee2e6;    /* Cinza Claro */
-    --cor-destaque-verde: #9ccc65; /* Verde Lima */
-    --cor-destaque-rosa: #f06292;  /* Rosa Médio */
-    --cor-alerta: #ffc107;         /* Amarelo Alerta */
-    --cor-sucesso: #28a745;        /* Verde Sucesso */
-    --cor-erro: #dc3545;           /* Vermelho Erro */
-    --cor-laranja-proteja: #ffb74d;/* Laranja Proteja */
-    --cor-azul-principal: #3498db; /* Azul Principal */
-    --cor-azul-hover: #2980b9;     /* Hover do Azul */
+    --cor-secundaria: #f48fb1;       /* Rosa Pastel */
+    --cor-terciaria: #fff9c4;        /* Amarelo Creme/Pálido */
+    --cor-fundo-principal: #f8f9fa;   /* Branco Off-White */
+    --cor-texto-principal: #495057;   /* Cinza Escuro */
+    --cor-texto-secundaria: #6c757d;  /* Cinza Médio */
+    --cor-borda-sutil: #dee2e6;       /* Cinza Claro */
+    --cor-destaque-verde: #9ccc65;    /* Verde Lima */
+    --cor-destaque-rosa: #f06292;     /* Rosa Médio */
+    --cor-alerta: #ffc107;           /* Amarelo Alerta */
+    --cor-sucesso: #28a745;          /* Verde Sucesso */
+    --cor-erro: #dc3545;             /* Vermelho Erro */
+    --cor-laranja-proteja: #ffb74d;   /* Laranja Proteja */
+    --cor-azul-principal: #3498db;    /* Azul Principal */
+    --cor-azul-hover: #2980b9;        /* Hover do Azul */
 }
 
 body {
@@ -28,44 +28,38 @@ body {
 /* ===================== CABEÇALHO COM FORMAS ===================== */
 .fancy-header {
     position: relative;
-    min-height: 250px; /* Ajuste a altura conforme desejar */
-    overflow: hidden;  /* Para esconder partes fora do container */
-    background: #fff;  /* Base do header */
+    min-height: 250px;
+    overflow: hidden;
+    background: #fff;
 }
 
 /* Formas coloridas usando clip-path */
-
-/* shape1 (agora AZUL) */
 .shape1 {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 100%;
-    background: #3498db; /* Azul */
+    background: #3498db;
     clip-path: polygon(0 0, 100% 0, 80% 100%, 0 100%);
     z-index: 1;
 }
-
-/* shape2 (VERDE) */
 .shape2 {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 100%;
-    background: #9CCC65; /* Verde Lima */
+    background: #9CCC65;
     clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 100%);
     opacity: 0.9;
     z-index: 2;
     animation: slideDiagonal 2.5s ease-in-out infinite alternate;
 }
-
-/* shape3 (agora LARANJA) */
 .shape3 {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 100%;
-    background: #FF8C00; /* Laranja */
+    background: #FF8C00;
     clip-path: polygon(0 0, 60% 0, 40% 100%, 0 100%);
     opacity: 0.8;
     z-index: 3;
@@ -75,13 +69,11 @@ body {
 /* Conteúdo textual dentro do header */
 .header-content {
     position: relative;
-    z-index: 10; /* Fica acima das formas */
+    z-index: 10;
     text-align: center;
     padding: 2rem 1rem;
     color: #fff;
 }
-
-/* Título no header */
 .header-content h1 {
     margin: 0;
     font-weight: 700;
@@ -89,92 +81,48 @@ body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
 }
 
-/* ===================== ANIMAÇÕES CUSTOMIZADAS NO HEADER ===================== */
 @keyframes slideDiagonal {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-3%);
-    }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-3%); }
 }
 @keyframes floatUp {
-    0% {
-        transform: translateY(0);
-    }
-    100% {
-        transform: translateY(-3%);
-    }
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-3%); }
 }
 
-/* ===================== LOGIN SECTION ===================== */
-#login-section {
-    background: #fff;
+/* Cartões (Login, Registro, etc.) */
+.card {
     max-width: 500px;
-    margin: -70px auto 50px auto; /* puxe um pouco para cima se quiser sobrepor o header */
+    margin: auto;
     padding: 30px;
     border-radius: 5px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    position: relative;
-    z-index: 100; /* Fica acima do header */
 }
 
-/* Botão de submit do login */
-button[type="submit"] {
+/* Botões */
+button[type="submit"], .btn-primary {
     background-color: var(--cor-destaque-verde);
     color: #fff;
 }
-button[type="submit"]:hover {
+button[type="submit"]:hover, .btn-primary:hover {
     background-color: #8bc34a;
 }
 
-/* ===================== ÁREA PRINCIPAL (APÓS LOGIN) ===================== */
+/* Área principal */
 main {
     background: var(--cor-fundo-principal);
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
-
-/* ===================== ABAS (NAVEGAÇÃO) ===================== */
 .nav-tabs .nav-link {
     background-color: var(--cor-fundo-principal);
     color: var(--cor-texto-secundaria);
     border: 1px solid var(--cor-borda-sutil);
 }
-.nav-tabs .nav-link.active,
-#btnNovoCaso.active,
-#btnNovoCaso:active {
+.nav-tabs .nav-link.active {
     background-color: var(--cor-destaque-verde);
     color: #000;
     border-color: var(--cor-destaque-verde) !important;
 }
-.nav-tabs .nav-link.active + .nav-link,
-#btnCasosSalvos.active,
-#btnCasosSalvos:active {
-    border-left-color: transparent;
-}
-.nav-tabs .nav-link:last-child.active,
-#btnCasosSalvos.active,
-#btnCasosSalvos:active {
-    border-right-color: var(--cor-destaque-rosa) !important;
-}
-.nav-tabs li:last-child .nav-link.active,
-#btnCasosSalvos.active,
-#btnCasosSalvos:active {
-    border-top-right-radius: 0.25rem;
-    border-bottom-right-radius: 0.25rem;
-}
-.nav-tabs li:first-child .nav-link.active,
-#btnNovoCaso.active,
-#btnNovoCaso:active {
-    border-top-left-radius: 0.25rem;
-    border-bottom-left-radius: 0.25rem;
-}
-
-/* Se quiser manter a cor padrão do Bootstrap nos botões .btn-warning (Novo Caso)
-   e .btn-info (Casos Salvos), não sobrescreva aqui. */
-
-/* ===================== ANIMAÇÃO PARA AS ABAS ===================== */
-/* Faz cada .tab-pane (conteúdo da aba) surgir levemente de baixo para cima */
 .tab-pane {
     animation-duration: 0.5s;
     animation-fill-mode: both;
@@ -183,17 +131,11 @@ main {
     animation-name: fadeInUpTabs;
 }
 @keyframes fadeInUpTabs {
-    0% {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
-/* ===================== BOTÃO SALVAR CASO ===================== */
+/* Botão Salvar Caso */
 #btnSalvarCaso {
     background-color: var(--cor-sucesso);
     color: #fff;
@@ -203,7 +145,7 @@ main {
     background-color: #218838;
 }
 
-/* ===================== TABELA DE CASOS ===================== */
+/* Tabela de Casos */
 #case-table thead th {
     background-color: var(--cor-primaria);
     color: var(--cor-texto-principal);
@@ -213,8 +155,6 @@ main {
 .details-table td {
     border-color: var(--cor-borda-sutil);
 }
-
-/* Botões de ação na tabela */
 .btnDetalhes {
     background-color: var(--cor-destaque-rosa);
     color: #fff;
@@ -240,7 +180,7 @@ main {
     background-color: #495057;
 }
 
-/* ===================== ALERTAS DE NOTIFICAÇÃO ===================== */
+/* Alertas */
 #notification-container .alert-success {
     background-color: var(--cor-sucesso);
     color: #fff;
@@ -248,7 +188,7 @@ main {
 }
 #notification-container .alert-warning {
     background-color: var(--cor-alerta);
-    color: var(--cor-texto-principal);
+    color: var(--cor-texto-secundaria);
     border-color: #e0ab00;
 }
 #notification-container .alert-danger {
@@ -262,13 +202,13 @@ main {
     border-color: #e91e63;
 }
 
-/* ===================== FOCUS ===================== */
+/* FOCUS */
 :focus {
     outline: 2px solid var(--cor-azul-principal);
     outline-offset: 2px;
 }
 
-/* ===================== RESPONSIVIDADE ===================== */
+/* Responsividade */
 @media (max-width: 768px) {
     .header-content h1 {
         font-size: 1.8rem;
@@ -281,13 +221,4 @@ main {
     .container {
         padding: 0 1rem;
     }
-    #case-form .col-md-6 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-}
-
-/* ===================== NAVBAR BRAND (se houver) ===================== */
-.navbar-brand {
-    font-weight: bold;
 }
