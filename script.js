@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", function() {
   filtroMes.addEventListener("change", debouncedFilter);
   
   // ===================
-  //  SALVAR/ATUALIZAR CASO
+  //  SALVAR/ATUALIZAR CASO (SEM INSERIR/ATUALIZAR MANUALMENTE NA TABELA)
   // ===================
   btnSalvarCaso.addEventListener("click", function() {
     const fullData = {
@@ -395,6 +395,7 @@ document.addEventListener("DOMContentLoaded", function() {
       tecnicosReferencia: document.getElementById("tecnicos-referencia").value
     };
   
+    // Processar as datas em mapaDatas
     let mapaDatas = {};
     const arrDatas = fullData.datasTexto.split(",");
     arrDatas.forEach(d => {
@@ -408,8 +409,10 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     fullData.mapaDatas = mapaDatas;
   
+    // Referência ao nó "casos" no Realtime Database
     const casosRef = ref(database, "casos");
   
+    // Se estamos editando (já existe editingKey), faz update
     if (editingRow && editingKey) {
       update(ref(database, "casos/" + editingKey), fullData)
         .then(() => {
@@ -419,8 +422,11 @@ document.addEventListener("DOMContentLoaded", function() {
           console.error(err);
           showNotification("Erro ao atualizar no DB", "danger");
         });
-      // Não reseta as variáveis aqui para manter a referência à linha já existente
+      // Reseta as variáveis de edição
+      editingRow = null;
+      editingKey = null;
     } else {
+      // Senão, cria um novo caso
       const newCaseRef = push(casosRef);
       set(newCaseRef, fullData)
         .then(() => {
@@ -432,33 +438,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
   
-    const summaryHTML = `
-      <td>${fullData.numeroProntuario}</td>
-      <td>${fullData.dataEntrada}</td>
-      <td>${fullData.situacaoAtual}</td>
-      <td>${fullData.nomeCriad}</td>
-      <td>${fullData.responsavelNome}</td>
-      <td>${fullData.datasTexto}</td>
-      <td>
-        <button class="btnDetalhes btn btn-sm btn-info">Detalhes</button>
-        <button class="btnEditar btn btn-sm btn-warning">Editar</button>
-      </td>
-    `;
-    let newRow;
-    if (editingRow) {
-      newRow = editingRow;
-      newRow.innerHTML = summaryHTML;
-      showNotification("Alteração com Sucesso", "success");
-      // Agora, após atualizar a linha, reseta as variáveis de edição
-      editingRow = null;
-      editingKey = null;
-    } else {
-      newRow = document.createElement("tr");
-      newRow.innerHTML = summaryHTML;
-      caseTableBody.appendChild(newRow);
-      showNotification("Prontuário Salvo", "success");
-    }
-    newRow.setAttribute("data-full", JSON.stringify(fullData));
+    // Limpa o formulário
     caseForm.reset();
   });
   
@@ -470,6 +450,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!row) return;
   
     if (e.target.classList.contains("btnDetalhes")) {
+      // Mostrar / ocultar detalhes
       if (row.nextElementSibling && row.nextElementSibling.classList.contains("details-row")) {
         row.parentNode.removeChild(row.nextElementSibling);
       } else {
@@ -510,6 +491,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
     else if (e.target.classList.contains("btnEditar")) {
+      // Carregar dados no formulário para edição
       const fullData = JSON.parse(row.getAttribute("data-full"));
       document.getElementById("numero-prontuario").value = fullData.numeroProntuario || "";
       document.getElementById("data-entrada").value = fullData.dataEntrada || "";
@@ -634,6 +616,7 @@ document.addEventListener("DOMContentLoaded", function() {
   //  CARREGAR DADOS DO DB AO INICIAR
   // ===================
   onValue(ref(database, "casos"), (snapshot) => {
+    // Limpa a tabela e recria
     caseTableBody.innerHTML = "";
     snapshot.forEach(childSnapshot => {
       const childKey = childSnapshot.key;
@@ -651,6 +634,7 @@ document.addEventListener("DOMContentLoaded", function() {
           <button class="btnEditar btn btn-sm btn-warning">Editar</button>
         </td>
       `;
+      // Atributos para manipular detalhes/edição
       newRow.setAttribute("data-full", JSON.stringify(fullData));
       newRow.setAttribute("data-key", childKey);
       caseTableBody.appendChild(newRow);
