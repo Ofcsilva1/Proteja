@@ -419,8 +419,7 @@ document.addEventListener("DOMContentLoaded", function() {
           console.error(err);
           showNotification("Erro ao atualizar no DB", "danger");
         });
-      editingRow = null;
-      editingKey = null;
+      // Não reseta as variáveis aqui para manter a referência à linha já existente
     } else {
       const newCaseRef = push(casosRef);
       set(newCaseRef, fullData)
@@ -450,7 +449,9 @@ document.addEventListener("DOMContentLoaded", function() {
       newRow = editingRow;
       newRow.innerHTML = summaryHTML;
       showNotification("Alteração com Sucesso", "success");
+      // Agora, após atualizar a linha, reseta as variáveis de edição
       editingRow = null;
+      editingKey = null;
     } else {
       newRow = document.createElement("tr");
       newRow.innerHTML = summaryHTML;
