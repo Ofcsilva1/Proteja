@@ -277,7 +277,9 @@ document.addEventListener("DOMContentLoaded", function() {
   // ===================
   function getVisibleRows() {
     const allRows = caseTableBody.querySelectorAll("tr");
-    return Array.from(allRows).filter(r => r.style.display !== "none");
+    return Array.from(allRows).filter(r =>
+      !r.classList.contains("details-row") && r.style.display !== "none"
+    );
   }
   function showPage(page) {
     currentPage = page;
@@ -324,6 +326,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const valMes = filtroMes.value;
     const rows = caseTableBody.querySelectorAll("tr");
     rows.forEach(row => {
+      if (row.classList.contains("details-row")) return;
       const cells = row.querySelectorAll("td");
       if (!cells.length) return;
       const txtProntuario = cells[0].innerText.toLowerCase();
