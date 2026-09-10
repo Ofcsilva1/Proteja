@@ -60,19 +60,21 @@ body {
 }
 
 .sidebar-header {
-  padding: 1.5rem 1.2rem;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  background: rgba(0,0,0,0.1);
-  text-align: center;
+    width: 100%;
+    background-color: #ffffff;
+    padding: 15px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .sidebar-logo {
-    background-color: #ffffff; /* ou remova se for transparente */
-    padding: 8px;
-    border-radius: 6px;
-    max-width: 80%;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 170px;
+    height: auto;
     display: block;
+    background: transparent;
+    border-radius: 0;
 }
 
 .sidebar-menu-container { padding: 1.5rem 0; flex: 1; }
