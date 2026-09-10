@@ -1,22 +1,7 @@
-/****************************************************
- * script.js
- * 
- * Deve ser importado como MÓDULO:
- * <script type="module" src="script.js"></script>
- ****************************************************/
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
-import {
-  getDatabase, ref, push, set, onValue, update, 
-  query, orderByChild, equalTo, get
-} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
-// Importações do Firebase Auth
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut
-} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 // ==================
 //  CONFIG FIREBASE
@@ -38,337 +23,127 @@ const database = getDatabase(app);
 const auth = getAuth(app);
 
 // ==================
-//  LÓGICA PRINCIPAL
+//  LÓGICA PRINCIPAL E UI
 // ==================
 document.addEventListener("DOMContentLoaded", function() {
-  // Seletores das telas de autenticação e do app
+  
+  // Elementos Estruturais
+  const authWrapper = document.getElementById("auth-wrapper");
+  const appWrapper = document.getElementById("app-wrapper");
   const loginSection = document.getElementById("login-section");
-  const loginForm = document.getElementById("login-form");
-  const appSection = document.getElementById("app-section");
-
-  // Seletores para registro
   const registerSection = document.getElementById("register-section");
-  const registerForm = document.getElementById("register-form");
-  const linkRegister = document.getElementById("link-register");
-  const linkLogin = document.getElementById("link-login");
-  const mostrarSenhaReg = document.getElementById("mostrar-senha-reg");
-
-  // Botão de logout
-  const btnLogout = document.getElementById("btnLogout");
-
-  // Seletores do site (casos)
-  const btnNovoCaso = document.getElementById("btnNovoCaso");
-  const btnCasosSalvos = document.getElementById("btnCasosSalvos");
-
-  const formSection = document.getElementById("form-section");
+  
+  // Elementos de Navegação Sidebar
+  const navList = document.getElementById("nav-list");
+  const navNew = document.getElementById("nav-new");
   const listSection = document.getElementById("list-section");
+  const formSection = document.getElementById("form-section");
+  const pageTitle = document.getElementById("page-title");
+  const btnCancelarForm = document.getElementById("btnCancelarForm");
 
+  // Formulário e Tabela
   const caseForm = document.getElementById("case-form");
   const btnSalvarCaso = document.getElementById("btnSalvarCaso");
-  const caseTableBody = document.getElementById("case-table").querySelector("tbody");
-
-  const filtroProntuario = document.getElementById("filtroProntuario");
-  const filtroCriad = document.getElementById("filtroCriad");
-  const filtroMes = document.getElementById("filtroMes");
-
-  const btnExportCSV = document.getElementById("btnExportCSV");
-  const btnExportXLS = document.getElementById("btnExportXLS");
-  const btnExportPDF = document.getElementById("btnExportPDF");
-
-  const paginationEl = document.getElementById("pagination");
-  const rowsPerPage = 10;
-  let currentPage = 1;
-
+  const caseTableBody = document.querySelector("#case-table tbody");
+  
+  // Variáveis de Controle
   let editingRow = null;
-  let editingKey = null; // chave do registro no DB, se for edição
+  let editingKey = null;
 
-  // Mapeamento para exportações (incluindo todos os campos)
+  // Mapa de Exportação
   const exportMapping = {
-    numeroProntuario: "Nº Prontuário",
-    dataEntrada: "Data Entrada",
-    docOrigem: "Documento de Origem",
-    origemCaso: "Origem do Caso",
-    cor: "Cor",
-    detalheOrigem: "Detalhamento da Origem",
-    situacaoAtual: "Situação Atual",
-    detalheSituacao: "Detalhamento da Situação",
-    nomeCriad: "Nome CRIAD",
-    responsavelNome: "Responsável",
-    responsavelCpf: "CPF",
-    comunicacaoViolencia: "Comunicação da Violência",
-    oficioViolencia: "Ofício Violência",
-    encaminhamentosSolicitados: "Encaminhamentos Solicitados",
-    detalheEncaminhamento: "Detalhamento do Encaminhamento",
-    dataOficioEnc: "Data/Ofício Enc.",
-    retornoSolicitado: "Retorno Solicitado",
-    infoRetorno: "Info Retorno",
-    estudoCaso: "Estudo de Caso",
-    piaElaborado: "PIA Elaborado",
-    outrasPendencias: "Outras Pendências",
-    datasTexto: "Datas de Atendimento",
-    tecnicosReferencia: "Técnicos de Referência"
+    numeroProntuario: "Nº Prontuário", dataEntrada: "Data Entrada",
+    docOrigem: "Doc. Origem", origemCaso: "Origem", cor: "Cor",
+    situacaoAtual: "Situação", nomeCriad: "Nome CRIAD",
+    responsavelNome: "Responsável", responsavelCpf: "CPF",
+    comunicacaoViolencia: "Com. Violência", encaminhamentosSolicitados: "Encaminhamento",
+    datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
   };
 
-  // ===================
-  //  FUNÇÕES AUXILIARES
-  // ===================
+  // Funções Auxiliares
   function showNotification(message, type) {
     const container = document.getElementById("notification-container");
-    const alertDiv = document.createElement("div");
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.role = "alert";
-    alertDiv.innerText = message;
-    container.appendChild(alertDiv);
+    const alert = document.createElement("div");
+    alert.className = `alert alert-${type} shadow-sm animate__animated animate__fadeInDown`;
+    alert.innerText = message;
+    container.appendChild(alert);
     setTimeout(() => {
-      alertDiv.classList.remove("show");
-      setTimeout(() => {
-        if (container.contains(alertDiv)) container.removeChild(alertDiv);
-      }, 500);
+      alert.classList.replace('animate__fadeInDown', 'animate__fadeOutUp');
+      setTimeout(() => alert.remove(), 500);
     }, 3000);
   }
 
-  function extrairNomeMes(dataStr) {
-    const token = dataStr.split(" ")[0];
-    const partes = token.split("/");
-    if (partes.length !== 3) return null;
-    const mes = parseInt(partes[1], 10);
-    const nomesMes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-                      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-    if (mes < 1 || mes > 12) return null;
-    return nomesMes[mes - 1];
+  function toggleView(view) {
+    navList.classList.remove('active');
+    navNew.classList.remove('active');
+    
+    if(view === 'list') {
+      formSection.style.display = "none";
+      listSection.style.display = "block";
+      navList.classList.add('active');
+      pageTitle.innerText = "Controle Geral de Casos";
+    } else {
+      listSection.style.display = "none";
+      formSection.style.display = "block";
+      navNew.classList.add('active');
+      pageTitle.innerText = editingKey ? "Editar Caso" : "Registrar Novo Caso";
+    }
   }
 
-  function debounce(func, delay) {
-    let timeout;
-    return function(...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), delay);
-    };
-  }
+  // Navegação Lateral
+  navList.addEventListener("click", (e) => { e.preventDefault(); toggleView('list'); });
+  navNew.addEventListener("click", (e) => { 
+    e.preventDefault(); 
+    caseForm.reset();
+    editingKey = null;
+    editingRow = null;
+    toggleView('form'); 
+  });
+  btnCancelarForm.addEventListener("click", () => toggleView('list'));
 
   // ===================
-  //  ALTERNÂNCIA DE TELAS (LOGIN ↔ REGISTRO)
+  // AUTENTICAÇÃO
   // ===================
-  linkRegister.addEventListener("click", function(e) {
+  document.getElementById("link-register").addEventListener("click", e => {
+    e.preventDefault(); loginSection.style.display = "none"; registerSection.style.display = "block";
+  });
+  
+  document.getElementById("link-login").addEventListener("click", e => {
+    e.preventDefault(); registerSection.style.display = "none"; loginSection.style.display = "block";
+  });
+
+  document.getElementById("show-password").addEventListener("change", function() {
+    document.getElementById("password").type = this.checked ? "text" : "password";
+  });
+
+  document.getElementById("login-form").addEventListener("submit", e => {
     e.preventDefault();
-    loginSection.style.display = "none";
-    registerSection.style.display = "block";
-  });
-  linkLogin.addEventListener("click", function(e) {
-    e.preventDefault();
-    registerSection.style.display = "none";
-    loginSection.style.display = "block";
-  });
-
-  // ===================
-  //  MOSTRAR SENHA NO LOGIN
-  // ===================
-  const showPasswordCheckbox = document.getElementById("show-password");
-  showPasswordCheckbox.addEventListener("change", function() {
-    const passwordInput = document.getElementById("password");
-    passwordInput.type = this.checked ? "text" : "password";
+    const email = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value;
+    signInWithEmailAndPassword(auth, email, pass).then(() => {
+      authWrapper.style.display = "none";
+      appWrapper.style.display = "flex";
+      showNotification("Login bem-sucedido!", "success");
+    }).catch(err => showNotification("Falha no login. Verifique as credenciais.", "danger"));
   });
 
-  // ===================
-  //  MOSTRAR SENHA NO REGISTRO
-  // ===================
-  mostrarSenhaReg.addEventListener("change", function() {
-    const senhaInput = document.getElementById("senha");
-    const confirmarSenhaInput = document.getElementById("confirmar-senha");
-    senhaInput.type = this.checked ? "text" : "password";
-    confirmarSenhaInput.type = this.checked ? "text" : "password";
+  document.getElementById("btnLogout").addEventListener("click", () => {
+    signOut(auth).then(() => {
+      appWrapper.style.display = "none";
+      authWrapper.style.display = "flex";
+      loginSection.style.display = "block";
+    });
   });
 
   // ===================
-  //  REGISTRO DE NOVA CONTA (Firebase Auth)
+  // CRUD - FIREBASE
   // ===================
-  registerForm.addEventListener("submit", function(e) {
-    e.preventDefault();
-    const emailNumero = document.getElementById("email-numero").value.trim();
-    const senha = document.getElementById("senha").value;
-    const confirmarSenha = document.getElementById("confirmar-senha").value;
-
-    if (senha !== confirmarSenha) {
-      showNotification("As senhas não coincidem!", "danger");
+  btnSalvarCaso.addEventListener("click", () => {
+    if(!document.getElementById("numero-prontuario").value) {
+      showNotification("O Número do Prontuário é obrigatório.", "warning");
       return;
     }
 
-    createUserWithEmailAndPassword(auth, emailNumero, senha)
-      .then((userCredential) => {
-        showNotification("Conta criada com sucesso!", "success");
-        registerForm.reset();
-        registerSection.style.display = "none";
-        loginSection.style.display = "block";
-      })
-      .catch((error) => {
-        console.error("Erro no registro:", error);
-        if (error.code === 'auth/email-already-in-use') {
-          showNotification("Este usuário já existe!", "danger");
-        } else if (error.code === 'auth/invalid-email') {
-          showNotification("E-mail inválido!", "danger");
-        } else {
-          showNotification("Erro ao criar a conta!", "danger");
-        }
-      });
-  });
-
-  // ===================
-  //  LOGIN (Firebase Auth)
-  // ===================
-  loginForm.addEventListener("submit", function(e) {
-    e.preventDefault();
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-
-    signInWithEmailAndPassword(auth, username, password)
-      .then((userCredential) => {
-        loginSection.style.display = "none";
-        appSection.style.display = "block";
-        appSection.classList.add("animate__fadeIn");
-        showNotification("Login feito com Sucesso", "success");
-      })
-      .catch((error) => {
-        console.error("Erro no login:", error);
-        if (error.code === 'auth/wrong-password') {
-          alert("Senha incorreta!");
-        } else if (error.code === 'auth/user-not-found') {
-          alert("Usuário não encontrado!");
-        } else if (error.code === 'auth/invalid-email') {
-          alert("Formato de e-mail inválido!");
-        } else {
-          alert("Erro no login!");
-        }
-      });
-    loginForm.reset();
-  });
-
-  // ===================
-  //  LOGOUT (Firebase Auth)
-  // ===================
-  btnLogout.addEventListener("click", function() {
-    signOut(auth)
-      .then(() => {
-        appSection.style.display = "none";
-        loginSection.style.display = "block";
-        showNotification("Você saiu com sucesso!", "info");
-      })
-      .catch((error) => {
-        console.error("Erro ao sair:", error);
-        alert("Erro ao sair!");
-      });
-  });
-
-  // ===================
-  //  LÓGICA DO SITE (CASOS)
-  // ===================
-  btnNovoCaso.addEventListener("click", () => {
-    formSection.style.display = "block";
-    listSection.style.display = "none";
-    formSection.classList.add("animate__fadeIn");
-  });
-  btnCasosSalvos.addEventListener("click", () => {
-    formSection.style.display = "none";
-    listSection.style.display = "block";
-    listSection.classList.add("animate__fadeIn");
-  });
-
-  // ===================
-  //  PAGINAÇÃO
-  // ===================
-  function getVisibleRows() {
-    const allRows = caseTableBody.querySelectorAll("tr");
-    return Array.from(allRows).filter(r => r.style.display !== "none");
-  }
-  function showPage(page) {
-    currentPage = page;
-    const visibleRows = getVisibleRows();
-    visibleRows.forEach((row, index) => {
-      row.style.display = (index >= (page - 1) * rowsPerPage && index < page * rowsPerPage) ? "" : "none";
-    });
-    updatePagination(visibleRows.length);
-  }
-  function updatePagination(totalRows) {
-    const totalPages = Math.ceil(totalRows / rowsPerPage);
-    let paginationHTML = '<ul class="pagination justify-content-center">';
-    paginationHTML += `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
-                         <a class="page-link" href="#" data-page="${currentPage - 1}">Anterior</a>
-                       </li>`;
-    for (let i = 1; i <= totalPages; i++) {
-      paginationHTML += `<li class="page-item ${i === currentPage ? "active" : ""}">
-                           <a class="page-link" href="#" data-page="${i}">${i}</a>
-                         </li>`;
-    }
-    paginationHTML += `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
-                         <a class="page-link" href="#" data-page="${currentPage + 1}">Próximo</a>
-                       </li>`;
-    paginationHTML += "</ul>";
-    paginationEl.innerHTML = paginationHTML;
-    const links = paginationEl.querySelectorAll("a.page-link");
-    links.forEach(link => {
-      link.addEventListener("click", function(e) {
-        e.preventDefault();
-        const page = Number(this.getAttribute("data-page"));
-        if (!isNaN(page) && page >= 1 && page <= totalPages) {
-          showPage(page);
-        }
-      });
-    });
-  }
-
-  // ===================
-  //  FILTRAGEM
-  // ===================
-  const debouncedFilter = debounce(() => {
-    const valProntuario = filtroProntuario.value.toLowerCase().trim();
-    const valCriad = filtroCriad.value.toLowerCase().trim();
-    const valMes = filtroMes.value;
-    const rows = caseTableBody.querySelectorAll("tr");
-    rows.forEach(row => {
-      const cells = row.querySelectorAll("td");
-      if (!cells.length) return;
-      const txtProntuario = cells[0].innerText.toLowerCase();
-      const txtCriad = cells[3].innerText.toLowerCase();
-  
-      let matchProntuario = !valProntuario || txtProntuario.includes(valProntuario);
-      let matchCriad = !valCriad || txtCriad.includes(valCriad);
-  
-      let fullData;
-      try {
-        fullData = JSON.parse(row.getAttribute("data-full"));
-      } catch(e) {
-        fullData = {};
-      }
-  
-      let matchMes = true;
-      let displayDates = fullData.datasTexto;
-  
-      if (valMes && fullData.mapaDatas) {
-        if (fullData.mapaDatas[valMes] && fullData.mapaDatas[valMes].length > 0) {
-          matchMes = true;
-          displayDates = fullData.mapaDatas[valMes].join(", ");
-        } else {
-          matchMes = false;
-        }
-      }
-  
-      if (!matchProntuario || !matchCriad || !matchMes) {
-        row.style.display = "none";
-      } else {
-        row.style.display = "";
-        cells[5].innerText = displayDates;
-      }
-    });
-    showPage(1);
-  }, 300);
-  
-  filtroProntuario.addEventListener("keyup", debouncedFilter);
-  filtroCriad.addEventListener("keyup", debouncedFilter);
-  filtroMes.addEventListener("change", debouncedFilter);
-  
-  // ===================
-  //  SALVAR/ATUALIZAR CASO (SEM INSERIR/ATUALIZAR MANUALMENTE NA TABELA)
-  // ===================
-  btnSalvarCaso.addEventListener("click", function() {
     const fullData = {
       numeroProntuario: document.getElementById("numero-prontuario").value,
       dataEntrada: document.getElementById("data-entrada").value,
@@ -394,251 +169,147 @@ document.addEventListener("DOMContentLoaded", function() {
       datasTexto: document.getElementById("datas-atendimento").value,
       tecnicosReferencia: document.getElementById("tecnicos-referencia").value
     };
-  
-    // Processar as datas em mapaDatas
-    let mapaDatas = {};
-    const arrDatas = fullData.datasTexto.split(",");
-    arrDatas.forEach(d => {
-      const dataLimpa = d.trim();
-      if (!dataLimpa) return;
-      const token = dataLimpa.split(" ")[0];
-      const mes = extrairNomeMes(token);
-      if (!mes) return;
-      if (!mapaDatas[mes]) mapaDatas[mes] = [];
-      mapaDatas[mes].push(dataLimpa);
-    });
-    fullData.mapaDatas = mapaDatas;
-  
-    // Referência ao nó "casos" no Realtime Database
-    const casosRef = ref(database, "casos");
-  
-    // Se estamos editando (já existe editingKey), faz update
-    if (editingRow && editingKey) {
-      update(ref(database, "casos/" + editingKey), fullData)
-        .then(() => {
-          showNotification("Alteração com Sucesso (DB)", "success");
-        })
-        .catch(err => {
-          console.error(err);
-          showNotification("Erro ao atualizar no DB", "danger");
-        });
-      // Reseta as variáveis de edição
-      editingRow = null;
-      editingKey = null;
-    } else {
-      // Senão, cria um novo caso
-      const newCaseRef = push(casosRef);
-      set(newCaseRef, fullData)
-        .then(() => {
-          showNotification("Prontuário Salvo (DB)", "success");
-        })
-        .catch(err => {
-          console.error(err);
-          showNotification("Erro ao salvar no DB", "danger");
-        });
-    }
-  
-    // Limpa o formulário
-    caseForm.reset();
-  });
-  
-  // ===================
-  //  DETALHES E EDIÇÃO
-  // ===================
-  caseTableBody.addEventListener("click", function(e) {
-    const row = e.target.closest("tr");
-    if (!row) return;
-  
-    if (e.target.classList.contains("btnDetalhes")) {
-      // Mostrar / ocultar detalhes
-      if (row.nextElementSibling && row.nextElementSibling.classList.contains("details-row")) {
-        row.parentNode.removeChild(row.nextElementSibling);
-      } else {
-        const fullData = JSON.parse(row.getAttribute("data-full"));
-        let detailsHTML = `<table class="details-table table table-bordered">
-          <tr><td><strong>Nº Prontuário</strong></td><td>${fullData.numeroProntuario}</td></tr>
-          <tr><td><strong>Data Entrada</strong></td><td>${fullData.dataEntrada}</td></tr>
-          <tr><td><strong>Doc Origem</strong></td><td>${fullData.docOrigem}</td></tr>
-          <tr><td><strong>Origem Caso</strong></td><td>${fullData.origemCaso}</td></tr>
-          <tr><td><strong>Cor</strong></td><td>${fullData.cor}</td></tr>
-          <tr><td><strong>Det. Origem</strong></td><td>${fullData.detalheOrigem}</td></tr>
-          <tr><td><strong>Situação Atual</strong></td><td>${fullData.situacaoAtual}</td></tr>
-          <tr><td><strong>Det. Situação</strong></td><td>${fullData.detalheSituacao}</td></tr>
-          <tr><td><strong>Nome CRIAD</strong></td><td>${fullData.nomeCriad}</td></tr>
-          <tr><td><strong>Responsável</strong></td><td>${fullData.responsavelNome}</td></tr>
-          <tr><td><strong>CPF</strong></td><td>${fullData.responsavelCpf}</td></tr>
-          <tr><td><strong>Com. Violência?</strong></td><td>${fullData.comunicacaoViolencia}</td></tr>
-          <tr><td><strong>Ofício Violência</strong></td><td>${fullData.oficioViolencia}</td></tr>
-          <tr><td><strong>Enc. Solicitado</strong></td><td>${fullData.encaminhamentosSolicitados}</td></tr>
-          <tr><td><strong>Det. Enc.</strong></td><td>${fullData.detalheEncaminhamento}</td></tr>
-          <tr><td><strong>Data/Ofício Enc.</strong></td><td>${fullData.dataOficioEnc}</td></tr>
-          <tr><td><strong>Retorno Solicitado?</strong></td><td>${fullData.retornoSolicitado}</td></tr>
-          <tr><td><strong>Info Retorno</strong></td><td>${fullData.infoRetorno}</td></tr>
-          <tr><td><strong>EC Elaborado?</strong></td><td>${fullData.estudoCaso}</td></tr>
-          <tr><td><strong>PIA Elaborado?</strong></td><td>${fullData.piaElaborado}</td></tr>
-          <tr><td><strong>Outras pendências</strong></td><td>${fullData.outrasPendencias}</td></tr>
-          <tr><td><strong>Datas de atendimentos</strong></td><td>${fullData.datasTexto}</td></tr>
-          <tr><td><strong>Técnicos de referência</strong></td><td>${fullData.tecnicosReferencia}</td></tr>
-        </table>`;
-  
-        const detailsRow = document.createElement("tr");
-        detailsRow.classList.add("details-row", "animate__animated", "animate__fadeIn");
-        const detailsCell = document.createElement("td");
-        detailsCell.colSpan = row.children.length;
-        detailsCell.innerHTML = detailsHTML;
-        detailsRow.appendChild(detailsCell);
-        row.parentNode.insertBefore(detailsRow, row.nextSibling);
-      }
-    }
-    else if (e.target.classList.contains("btnEditar")) {
-      // Carregar dados no formulário para edição
-      const fullData = JSON.parse(row.getAttribute("data-full"));
-      document.getElementById("numero-prontuario").value = fullData.numeroProntuario || "";
-      document.getElementById("data-entrada").value = fullData.dataEntrada || "";
-      document.getElementById("documento-origem").value = fullData.docOrigem || "";
-      document.getElementById("origem-caso").value = fullData.origemCaso || "";
-      document.getElementById("cor").value = fullData.cor || "";
-      document.getElementById("detalhe-origem").value = fullData.detalheOrigem || "";
-      document.getElementById("situacao-atual").value = fullData.situacaoAtual || "";
-      document.getElementById("detalhe-situacao").value = fullData.detalheSituacao || "";
-      document.getElementById("nome-criad").value = fullData.nomeCriad || "";
-      document.getElementById("responsavel-nome").value = fullData.responsavelNome || "";
-      document.getElementById("responsavel-cpf").value = fullData.responsavelCpf || "";
-      document.getElementById("comunicacao-violencia").value = fullData.comunicacaoViolencia || "";
-      document.getElementById("oficio-violencia").value = fullData.oficioViolencia || "";
-      document.getElementById("encaminhamentos-solicitados").value = fullData.encaminhamentosSolicitados || "";
-      document.getElementById("detalhe-encaminhamento").value = fullData.detalheEncaminhamento || "";
-      document.getElementById("data-oficio-enc").value = fullData.dataOficioEnc || "";
-      document.getElementById("retorno-solicitado").value = fullData.retornoSolicitado || "";
-      document.getElementById("info-retorno").value = fullData.infoRetorno || "";
-      document.getElementById("estudo-caso").value = fullData.estudoCaso || "";
-      document.getElementById("pia-elaborado").value = fullData.piaElaborado || "";
-      document.getElementById("outras-pendencias").value = fullData.outrasPendencias || "";
-      document.getElementById("datas-atendimento").value = fullData.datasTexto || "";
-      document.getElementById("tecnicos-referencia").value = fullData.tecnicosReferencia || "";
-  
-      editingRow = row;
-      editingKey = row.getAttribute("data-key") || null;
-  
-      formSection.style.display = "block";
-      listSection.style.display = "none";
-      formSection.classList.add("animate__fadeIn");
-    }
-  });
-  
-  // ===================
-  //  EXPORTAÇÕES (CSV, XLS, PDF)
-  // ===================
-  btnExportCSV.addEventListener("click", function() {
-    const headers = Object.values(exportMapping);
-    let csvContent = headers.map(h => `"${h}"`).join(";") + "\n";
-  
-    const rows = caseTableBody.querySelectorAll("tr");
-    rows.forEach(row => {
-      const dataAttr = row.getAttribute("data-full");
-      if (!dataAttr) return;
-      const fullData = JSON.parse(dataAttr);
-      const rowData = Object.keys(exportMapping).map(key => {
-        return `"${(fullData[key] || "").toString().replace(/"/g, '""')}"`;
+
+    if (editingKey) {
+      update(ref(database, "casos/" + editingKey), fullData).then(() => {
+        showNotification("Registro atualizado com sucesso!", "success");
+        toggleView('list');
       });
-      csvContent += rowData.join(";") + "\n";
-    });
-  
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "casos_proteja.csv";
-    link.click();
+    } else {
+      push(ref(database, "casos"), fullData).then(() => {
+        showNotification("Novo caso registrado!", "success");
+        toggleView('list');
+      });
+    }
   });
-  
-  btnExportXLS.addEventListener("click", function() {
-    const headers = Object.values(exportMapping);
-    let tableHTML = `<table><thead><tr>`;
-    headers.forEach(h => {
-      tableHTML += `<th>${h}</th>`;
-    });
-    tableHTML += `</tr></thead><tbody>`;
-  
-    const rows = caseTableBody.querySelectorAll("tr");
-    rows.forEach(row => {
-      const dataAttr = row.getAttribute("data-full");
-      if (!dataAttr) return;
-      const fullData = JSON.parse(dataAttr);
-      const rowData = Object.keys(exportMapping).map(key => fullData[key] || "");
-      tableHTML += "<tr>" + rowData.map(val => `<td>${val}</td>`).join("") + "</tr>";
-    });
-    tableHTML += `</tbody></table>`;
-  
-    const html = `<html><head><meta charset="UTF-8"/></head><body>${tableHTML}</body></html>`;
-    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "casos_proteja.xls";
-    link.click();
-  });
-  
-  btnExportPDF.addEventListener("click", function() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("l", "pt", "a3");
-    doc.setFontSize(6);
-    doc.text("Casos PROTEJA - Relatório", 40, 40);
-    const pageWidth = doc.internal.pageSize.getWidth();
-  
-    const headers = Object.values(exportMapping);
-    const data = [];
-    const rows = caseTableBody.querySelectorAll("tr");
-    rows.forEach(row => {
-      const dataAttr = row.getAttribute("data-full");
-      if (!dataAttr) return;
-      const fullData = JSON.parse(dataAttr);
-      const rowData = Object.keys(exportMapping).map(key => fullData[key] || "");
-      data.push(rowData);
-    });
-  
-    doc.autoTable({
-      head: [headers],
-      body: data,
-      startY: 60,
-      margin: { left: 10, right: 10 },
-      tableWidth: pageWidth - 20,
-      styles: { fontSize: 6, cellPadding: 2 },
-      headStyles: { fillColor: [76, 175, 80], halign: "center", fontSize: 6 },
-      bodyStyles: { halign: "left", fontSize: 6 },
-      theme: "grid",
-      pageBreak: "auto"
-    });
-    doc.save("casos_proteja.pdf");
-  });
-  
-  // ===================
-  //  CARREGAR DADOS DO DB AO INICIAR
-  // ===================
+
   onValue(ref(database, "casos"), (snapshot) => {
-    // Limpa a tabela e recria
     caseTableBody.innerHTML = "";
-    snapshot.forEach(childSnapshot => {
-      const childKey = childSnapshot.key;
-      const fullData = childSnapshot.val();
-      const newRow = document.createElement("tr");
-      newRow.innerHTML = `
-        <td>${fullData.numeroProntuario || ""}</td>
-        <td>${fullData.dataEntrada || ""}</td>
-        <td>${fullData.situacaoAtual || ""}</td>
-        <td>${fullData.nomeCriad || ""}</td>
-        <td>${fullData.responsavelNome || ""}</td>
-        <td>${fullData.datasTexto || ""}</td>
-        <td>
-          <button class="btnDetalhes btn btn-sm btn-info">Detalhes</button>
-          <button class="btnEditar btn btn-sm btn-warning">Editar</button>
+    snapshot.forEach(child => {
+      const data = child.val();
+      const tr = document.createElement("tr");
+      tr.setAttribute("data-full", JSON.stringify(data));
+      tr.setAttribute("data-key", child.key);
+      
+      let badgeColor = data.situacaoAtual === 'ativo' ? 'bg-success' : 'bg-secondary';
+      
+      tr.innerHTML = `
+        <td><strong>${data.numeroProntuario || "-"}</strong></td>
+        <td>${data.dataEntrada || "-"}</td>
+        <td><span class="badge ${badgeColor}">${data.situacaoAtual || "-"}</span></td>
+        <td>${data.nomeCriad || "-"}</td>
+        <td>${data.responsavelNome || "-"}</td>
+        <td>${data.datasTexto || "-"}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary btnDetalhes"><i class="bi bi-eye"></i></button>
+          <button class="btn btn-sm btn-outline-warning btnEditar"><i class="bi bi-pencil"></i></button>
         </td>
       `;
-      // Atributos para manipular detalhes/edição
-      newRow.setAttribute("data-full", JSON.stringify(fullData));
-      newRow.setAttribute("data-key", childKey);
-      caseTableBody.appendChild(newRow);
+      caseTableBody.appendChild(tr);
     });
-    showPage(1);
+  });
+
+  // Ações da Tabela (Editar e Expandir)
+  caseTableBody.addEventListener("click", e => {
+    const btn = e.target.closest("button");
+    if(!btn) return;
+    const row = btn.closest("tr");
+    const data = JSON.parse(row.getAttribute("data-full"));
+
+    if (btn.classList.contains("btnEditar")) {
+      editingKey = row.getAttribute("data-key");
+      editingRow = row;
+      Object.keys(data).forEach(key => {
+        const input = document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase());
+        if(input) input.value = data[key];
+      });
+      toggleView('form');
+    }
+    
+    if (btn.classList.contains("btnDetalhes")) {
+      const nextRow = row.nextElementSibling;
+      if (nextRow && nextRow.classList.contains("details-row")) {
+        nextRow.remove();
+      } else {
+        const detailHtml = `
+          <tr class="details-row"><td colspan="7">
+            <table class="details-table w-100">
+              <tr>
+                <td><strong>Doc. Origem:</strong> ${data.docOrigem || "-"}</td>
+                <td><strong>Comunicação Violência:</strong> ${data.comunicacaoViolencia || "-"}</td>
+              </tr>
+              <tr>
+                <td><strong>Detalhe Origem:</strong> ${data.detalheOrigem || "-"}</td>
+                <td><strong>Encaminhamento:</strong> ${data.encaminhamentosSolicitados || "-"}</td>
+              </tr>
+              <tr>
+                <td><strong>Técnicos:</strong> ${data.tecnicosReferencia || "-"}</td>
+                <td><strong>Pendências:</strong> ${data.outrasPendencias || "-"}</td>
+              </tr>
+            </table>
+          </td></tr>
+        `;
+        row.insertAdjacentHTML("afterend", detailHtml);
+      }
+    }
+  });
+
+  // ===================
+  // FILTROS
+  // ===================
+  function applyFilters() {
+    const valPront = document.getElementById("filtroProntuario").value.toLowerCase();
+    const valCriad = document.getElementById("filtroCriad").value.toLowerCase();
+    
+    document.querySelectorAll("#case-table tbody tr:not(.details-row)").forEach(row => {
+      const txtPront = row.cells[0].innerText.toLowerCase();
+      const txtCriad = row.cells[3].innerText.toLowerCase();
+      
+      const match = txtPront.includes(valPront) && txtCriad.includes(valCriad);
+      row.style.display = match ? "" : "none";
+      if(row.nextElementSibling && row.nextElementSibling.classList.contains('details-row')){
+          row.nextElementSibling.style.display = match ? "" : "none";
+      }
+    });
+  }
+  document.getElementById("filtroProntuario").addEventListener("keyup", applyFilters);
+  document.getElementById("filtroCriad").addEventListener("keyup", applyFilters);
+
+  // ===================
+  // EXPORTAÇÃO (CORRIGIDA)
+  // ===================
+  function getVisibleData() {
+    const rows = Array.from(caseTableBody.querySelectorAll("tr:not(.details-row)")).filter(r => r.style.display !== "none");
+    return rows.map(r => JSON.parse(r.getAttribute("data-full")));
+  }
+
+  document.getElementById("btnExportCSV").addEventListener("click", () => {
+    const data = getVisibleData();
+    let csv = Object.values(exportMapping).join(";") + "\n";
+    data.forEach(d => {
+      csv += Object.keys(exportMapping).map(k => `"${(d[k]||"").toString().replace(/"/g,'""')}"`).join(";") + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "proteja_casos.csv"; link.click();
+  });
+
+  document.getElementById("btnExportXLS").addEventListener("click", () => {
+    const data = getVisibleData();
+    let html = `<table border="1"><thead><tr>${Object.values(exportMapping).map(h=>`<th style="background:#2563eb;color:#fff;">${h}</th>`).join("")}</tr></thead><tbody>`;
+    data.forEach(d => {
+      html += `<tr>${Object.keys(exportMapping).map(k=>`<td>${d[k]||""}</td>`).join("")}</tr>`;
+    });
+    html += `</tbody></table>`;
+    const blob = new Blob([`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><meta charset="UTF-8"/><body>${html}</body></html>`], { type: "application/vnd.ms-excel" });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "proteja_casos.xls"; link.click();
+  });
+  
+  document.getElementById("btnExportPDF").addEventListener("click", () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF("l", "pt", "a4");
+    doc.text("Relatório de Casos - PROTEJA", 40, 40);
+    const data = getVisibleData().map(d => Object.keys(exportMapping).map(k => d[k]||""));
+    doc.autoTable({ head: [Object.values(exportMapping)], body: data, startY: 50, styles: { fontSize: 7 }});
+    doc.save("proteja_casos.pdf");
   });
 });
