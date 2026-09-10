@@ -175,13 +175,19 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 
-  onValue(ref(database, "casos"), (snapshot) => {
+  onValue(ref(database), (snapshot) => {
     caseTableBody.innerHTML = "";
     snapshot.forEach(child => {
       const data = child.val();
+      
+      // Adicione esta linha para ignorar usuários e mostrar só casos
+      if (!data.numeroProntuario) return; 
+      
       const tr = document.createElement("tr");
       tr.setAttribute("data-full", JSON.stringify(data));
       tr.setAttribute("data-key", child.key);
+      
+      // O resto do código continua igual...
       
       let badgeColor = data.situacaoAtual === 'ativo' ? 'bg-success' : 'bg-secondary';
       
