@@ -1,6 +1,6 @@
 :root {
   --app-bg: #f8fafc;
-  --sidebar-bg: #0d1b2a;        /* Azul marinho escuro corporativo */
+  --sidebar-bg: #0d1b2a;
   --sidebar-hover: #1b263b;
   --primary-color: #0d6efd;
   --card-bg: #ffffff;
@@ -19,7 +19,6 @@ body {
   overflow: hidden;
 }
 
-/* TELA DE LOGIN */
 .auth-wrapper {
   display: flex;
   align-items: center;
@@ -39,10 +38,8 @@ body {
 .auth-brand h2 { font-weight: 700; font-size: 1.8rem; margin-bottom: 2px; }
 .auth-brand p { color: var(--text-muted); font-size: 0.85rem; }
 
-/* LAYOUT PRINCIPAL */
 .app-layout { display: flex; height: 100vh; width: 100vw; }
 
-/* SIDEBAR ESTILO REFERÊNCIA */
 .sidebar {
   width: 280px;
   background-color: var(--sidebar-bg);
@@ -100,7 +97,6 @@ body {
   border-left-color: var(--primary-color);
 }
 
-/* Elemento gráfico de árvore na sidebar (idêntico ao print) */
 .sidebar-art {
   position: absolute;
   bottom: 60px;
@@ -116,7 +112,6 @@ body {
 .btn-logout { background: transparent; color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); font-size: 0.9rem; }
 .btn-logout:hover { background: #f87171; color: #fff; border-color: #f87171; }
 
-/* ÁREA DE CONTEÚDO */
 .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
 
 .content-header {
@@ -149,7 +144,6 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
 }
 
-/* ABAS SUPERIORES DO FORMULÁRIO (ESTILO DA REFERÊNCIA) */
 .form-nav .nav-tabs { gap: 6px; }
 .form-nav .nav-tabs .nav-link {
   color: var(--text-muted);
@@ -169,7 +163,6 @@ body {
   box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
 }
 
-/* GRID E CAMPOS COM ÍCONES */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 .full-width { grid-column: 1 / -1; }
 .form-label { font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.4rem; }
@@ -177,7 +170,6 @@ body {
 .form-control, .form-select { border: 1px solid var(--border-color); border-radius: 6px; padding: 0.6rem 0.85rem; font-size: 0.95rem; }
 .form-control:focus, .form-select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.12); }
 
-/* TABELA E PAGINAÇÃO */
 .table th { background-color: #f8fafc; color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid var(--border-color); }
 .table td { font-size: 0.9rem; vertical-align: middle; }
 .details-row { background-color: #f8fafc; }
