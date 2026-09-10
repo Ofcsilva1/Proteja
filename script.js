@@ -3,9 +3,6 @@ import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase
 import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
-// ==================
-//  CONFIG FIREBASE
-// ==================
 const firebaseConfig = {
   apiKey: "AIzaSyBNQqq67cuuDetOJZR2EcCkH4JNXOxNW3Y",
   authDomain: "proteja-5d929.firebaseapp.com",
@@ -22,35 +19,27 @@ getAnalytics(app);
 const database = getDatabase(app);
 const auth = getAuth(app);
 
-// ==================
-//  LÓGICA PRINCIPAL E UI
-// ==================
 document.addEventListener("DOMContentLoaded", function() {
-  
-  // Elementos Estruturais
   const authWrapper = document.getElementById("auth-wrapper");
   const appWrapper = document.getElementById("app-wrapper");
   const loginSection = document.getElementById("login-section");
   const registerSection = document.getElementById("register-section");
   
-  // Elementos de Navegação Sidebar
   const navList = document.getElementById("nav-list");
   const navNew = document.getElementById("nav-new");
   const listSection = document.getElementById("list-section");
   const formSection = document.getElementById("form-section");
   const pageTitle = document.getElementById("page-title");
+  const pageSubtitle = document.getElementById("page-subtitle");
   const btnCancelarForm = document.getElementById("btnCancelarForm");
 
-  // Formulário e Tabela
   const caseForm = document.getElementById("case-form");
   const btnSalvarCaso = document.getElementById("btnSalvarCaso");
   const caseTableBody = document.querySelector("#case-table tbody");
   
-  // Variáveis de Controle
   let editingRow = null;
   let editingKey = null;
 
-  // Mapa de Exportação
   const exportMapping = {
     numeroProntuario: "Nº Prontuário", dataEntrada: "Data Entrada",
     docOrigem: "Doc. Origem", origemCaso: "Origem", cor: "Cor",
@@ -60,7 +49,6 @@ document.addEventListener("DOMContentLoaded", function() {
     datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
   };
 
-  // Funções Auxiliares
   function showNotification(message, type) {
     const container = document.getElementById("notification-container");
     const alert = document.createElement("div");
@@ -82,15 +70,16 @@ document.addEventListener("DOMContentLoaded", function() {
       listSection.style.display = "block";
       navList.classList.add('active');
       pageTitle.innerText = "Controle Geral de Casos";
+      pageSubtitle.innerText = "Gerenciamento e monitoramento de prontuários.";
     } else {
       listSection.style.display = "none";
       formSection.style.display = "block";
       navNew.classList.add('active');
       pageTitle.innerText = editingKey ? "Editar Caso" : "Registrar Novo Caso";
+      pageSubtitle.innerText = "Preencha as informações abaixo para cadastrar um novo caso no sistema.";
     }
   }
 
-  // Navegação Lateral
   navList.addEventListener("click", (e) => { e.preventDefault(); toggleView('list'); });
   navNew.addEventListener("click", (e) => { 
     e.preventDefault(); 
@@ -101,9 +90,6 @@ document.addEventListener("DOMContentLoaded", function() {
   });
   btnCancelarForm.addEventListener("click", () => toggleView('list'));
 
-  // ===================
-  // AUTENTICAÇÃO
-  // ===================
   document.getElementById("link-register").addEventListener("click", e => {
     e.preventDefault(); loginSection.style.display = "none"; registerSection.style.display = "block";
   });
@@ -124,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function() {
       authWrapper.style.display = "none";
       appWrapper.style.display = "flex";
       showNotification("Login bem-sucedido!", "success");
-    }).catch(err => showNotification("Falha no login. Verifique as credenciais.", "danger"));
+    }).catch(() => showNotification("Falha no login. Verifique as credenciais.", "danger"));
   });
 
   document.getElementById("btnLogout").addEventListener("click", () => {
@@ -135,9 +121,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // ===================
-  // CRUD - FIREBASE
-  // ===================
   btnSalvarCaso.addEventListener("click", () => {
     if(!document.getElementById("numero-prontuario").value) {
       showNotification("O Número do Prontuário é obrigatório.", "warning");
@@ -201,15 +184,14 @@ document.addEventListener("DOMContentLoaded", function() {
         <td>${data.responsavelNome || "-"}</td>
         <td>${data.datasTexto || "-"}</td>
         <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary btnDetalhes"><i class="bi bi-eye"></i></button>
-          <button class="btn btn-sm btn-outline-warning btnEditar"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-primary btnDetalhes" title="Ver Detalhes"><i class="bi bi-eye"></i></button>
+          <button class="btn btn-sm btn-outline-warning btnEditar" title="Editar Caso"><i class="bi bi-pencil"></i></button>
         </td>
       `;
       caseTableBody.appendChild(tr);
     });
   });
 
-  // Ações da Tabela (Editar e Expandir)
   caseTableBody.addEventListener("click", e => {
     const btn = e.target.closest("button");
     if(!btn) return;
@@ -254,9 +236,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 
-  // ===================
-  // FILTROS
-  // ===================
   function applyFilters() {
     const valPront = document.getElementById("filtroProntuario").value.toLowerCase();
     const valCriad = document.getElementById("filtroCriad").value.toLowerCase();
@@ -275,9 +254,6 @@ document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("filtroProntuario").addEventListener("keyup", applyFilters);
   document.getElementById("filtroCriad").addEventListener("keyup", applyFilters);
 
-  // ===================
-  // EXPORTAÇÃO (CORRIGIDA)
-  // ===================
   function getVisibleData() {
     const rows = Array.from(caseTableBody.querySelectorAll("tr:not(.details-row)")).filter(r => r.style.display !== "none");
     return rows.map(r => JSON.parse(r.getAttribute("data-full")));
@@ -295,7 +271,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   document.getElementById("btnExportXLS").addEventListener("click", () => {
     const data = getVisibleData();
-    let html = `<table border="1"><thead><tr>${Object.values(exportMapping).map(h=>`<th style="background:#2563eb;color:#fff;">${h}</th>`).join("")}</tr></thead><tbody>`;
+    let html = `<table border="1"><thead><tr>${Object.values(exportMapping).map(h=>`<th style="background:#0d6efd;color:#fff;">${h}</th>`).join("")}</tr></thead><tbody>`;
     data.forEach(d => {
       html += `<tr>${Object.keys(exportMapping).map(k=>`<td>${d[k]||""}</td>`).join("")}</tr>`;
     });
