@@ -132,22 +132,18 @@
         </div>
 
         <div class="card-panel table-responsive">
-          <table id="case-table" class="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Prontuário</th>
-                <th>Entrada</th>
-                <th>Situação</th>
-                <th>CRIAD</th>
-                <th>Responsável</th>
-                <th>Atendimento</th>
-                <th class="text-end">Ações</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <nav id="pagination" class="mt-4"></nav>
-        </div>
+         <nav class="form-nav mb-4">
+            <div class="nav nav-tabs border-0 gap-2" id="form-tabs" role="tablist">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab1" type="button"><i class="bi bi-person-badge me-1"></i> Identificação</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab2" type="button"><i class="bi bi-activity me-1"></i> Situação</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab3" type="button"><i class="bi bi-people me-1"></i> Responsável</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab4" type="button"><i class="bi bi-shield-exclamation me-1"></i> Violência</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab5" type="button"><i class="bi bi-arrow-right-circle me-1"></i> Encaminhamentos</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab6" type="button"><i class="bi bi-reply me-1"></i> Retorno</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab7" type="button"><i class="bi bi-journal-check me-1"></i> Estudo/Plano</button>
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab8" type="button"><i class="bi bi-calendar-event me-1"></i> Atendimentos</button>
+            </div>
+          </nav>
       </section>
 
       <section id="form-section" class="animate__animated">
