@@ -1,224 +1,228 @@
-/* ===================== VARIÁVEIS DE COR ===================== */
+/* ===================== VARIÁVEIS DE COR (DARK THEME) ===================== */
 :root {
-    --cor-primaria: #aed581;       /* Verde Lima Pastel */
-    --cor-secundaria: #f48fb1;       /* Rosa Pastel */
-    --cor-terciaria: #fff9c4;        /* Amarelo Creme/Pálido */
-    --cor-fundo-principal: #f8f9fa;   /* Branco Off-White */
-    --cor-texto-principal: #495057;   /* Cinza Escuro */
-    --cor-texto-secundaria: #6c757d;  /* Cinza Médio */
-    --cor-borda-sutil: #dee2e6;       /* Cinza Claro */
-    --cor-destaque-verde: #9ccc65;    /* Verde Lima */
-    --cor-destaque-rosa: #f06292;     /* Rosa Médio */
-    --cor-alerta: #ffc107;           /* Amarelo Alerta */
-    --cor-sucesso: #28a745;          /* Verde Sucesso */
-    --cor-erro: #dc3545;             /* Vermelho Erro */
-    --cor-laranja-proteja: #ffb74d;   /* Laranja Proteja */
-    --cor-azul-principal: #3498db;    /* Azul Principal */
-    --cor-azul-hover: #2980b9;        /* Hover do Azul */
+    --cor-fundo-app: #121418;       /* Fundo geral muito escuro */
+    --cor-cartao: #1e2126;          /* Fundo dos cartões e formulários */
+    --cor-texto-principal: #e0e4e8; /* Texto claro (não branco puro para não ofuscar) */
+    --cor-texto-mutado: #9aa0a6;    /* Texto secundário */
+    --cor-borda: #2d3139;           /* Bordas discretas */
+    
+    /* Cores de Destaque */
+    --cor-destaque: #4dabf7;        /* Azul moderno para foco */
+    --cor-sucesso: #3bc9db;         /* Ciano para botões de salvar */
+    --cor-alerta: #fcc419;          /* Amarelo para edições/avisos */
+    --cor-erro: #ff6b6b;            /* Vermelho suave */
+    --cor-hover-linha: #252830;     /* Hover nas tabelas */
 }
 
 body {
     font-family: 'Rubik', sans-serif;
-    background: var(--cor-fundo-principal);
+    background-color: var(--cor-fundo-app);
     color: var(--cor-texto-principal);
     margin: 0;
     padding: 0;
 }
 
-/* ===================== CABEÇALHO COM FORMAS ===================== */
-.fancy-header {
-    position: relative;
-    min-height: 250px;
-    overflow: hidden;
-    background: #fff;
+/* ===================== CABEÇALHO LIMPO ===================== */
+.app-header {
+    background-color: var(--cor-cartao);
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 1.5rem 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Formas coloridas usando clip-path */
-.shape1 {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    background: #3498db;
-    clip-path: polygon(0 0, 100% 0, 80% 100%, 0 100%);
-    z-index: 1;
-}
-.shape2 {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    background: #9CCC65;
-    clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 100%);
-    opacity: 0.9;
-    z-index: 2;
-    animation: slideDiagonal 2.5s ease-in-out infinite alternate;
-}
-.shape3 {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    background: #FF8C00;
-    clip-path: polygon(0 0, 60% 0, 40% 100%, 0 100%);
-    opacity: 0.8;
-    z-index: 3;
-    animation: floatUp 3s ease-in-out infinite alternate;
-}
-
-/* Conteúdo textual dentro do header */
 .header-content {
-    position: relative;
-    z-index: 10;
     text-align: center;
-    padding: 2rem 1rem;
-    color: #fff;
 }
+
 .header-content h1 {
     margin: 0;
+    font-weight: 400;
+    font-size: 1.8rem;
+    color: var(--cor-texto-principal);
+}
+
+.text-destaque {
     font-weight: 700;
-    font-size: 2.2rem;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+    color: var(--cor-destaque);
+    letter-spacing: 1px;
 }
 
-@keyframes slideDiagonal {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-3%); }
-}
-@keyframes floatUp {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-3%); }
-}
-
-/* Cartões (Login, Registro, etc.) */
-.card {
-    max-width: 500px;
-    margin: auto;
-    padding: 30px;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+/* ===================== CARTÕES E SEÇÕES ===================== */
+.card, fieldset {
+    background-color: var(--cor-cartao) !important;
+    border: 1px solid var(--cor-borda) !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
-/* Botões */
-button[type="submit"], .btn-primary {
-    background-color: var(--cor-destaque-verde);
-    color: #fff;
-}
-button[type="submit"]:hover, .btn-primary:hover {
-    background-color: #8bc34a;
+fieldset {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
 }
 
-/* Área principal */
-main {
-    background: var(--cor-fundo-principal);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+legend {
+    color: var(--cor-destaque);
+    font-weight: 600;
+    font-size: 1.1rem;
 }
+
+/* ===================== NAVEGAÇÃO E ABAS (TABS) ===================== */
+.nav-tabs {
+    border-bottom: 2px solid var(--cor-borda);
+    margin-bottom: 1rem;
+}
+
 .nav-tabs .nav-link {
-    background-color: var(--cor-fundo-principal);
-    color: var(--cor-texto-secundaria);
-    border: 1px solid var(--cor-borda-sutil);
-}
-.nav-tabs .nav-link.active {
-    background-color: var(--cor-destaque-verde);
-    color: #000;
-    border-color: var(--cor-destaque-verde) !important;
-}
-.tab-pane {
-    animation-duration: 0.5s;
-    animation-fill-mode: both;
-}
-.tab-pane.fade.show {
-    animation-name: fadeInUpTabs;
-}
-@keyframes fadeInUpTabs {
-    0% { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0); }
+    color: var(--cor-texto-mutado);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
 }
 
-/* Botão Salvar Caso */
+.nav-tabs .nav-link:hover {
+    color: var(--cor-texto-principal);
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: transparent !important;
+    color: var(--cor-destaque) !important;
+    border-bottom: 2px solid var(--cor-destaque) !important;
+    font-weight: 600;
+}
+
+/* ===================== CAMPOS DE FORMULÁRIO ===================== */
+.form-control, .form-select {
+    background-color: #16181d !important;
+    border: 1px solid var(--cor-borda) !important;
+    color: var(--cor-texto-principal) !important;
+    border-radius: 6px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--cor-destaque) !important;
+    box-shadow: 0 0 0 0.25rem rgba(77, 171, 247, 0.2) !important;
+}
+
+label {
+    font-weight: 500;
+    color: var(--cor-texto-mutado);
+    margin-bottom: 0.4rem;
+}
+
+/* ===================== BOTÕES ===================== */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
 #btnSalvarCaso {
     background-color: var(--cor-sucesso);
-    color: #fff;
+    color: #121418;
     border: none;
+    padding: 0.5rem 2rem;
+    font-weight: 700;
 }
+
 #btnSalvarCaso:hover {
-    background-color: #218838;
+    background-color: #22b8cf;
+    transform: translateY(-1px);
 }
 
-/* Tabela de Casos */
-#case-table thead th {
-    background-color: var(--cor-primaria);
-    color: var(--cor-texto-principal);
-    border-bottom: 2px solid var(--cor-borda-sutil);
+.btn-warning {
+    background-color: var(--cor-alerta);
+    border: none;
+    color: #121418;
 }
-#case-table tbody td,
-.details-table td {
-    border-color: var(--cor-borda-sutil);
+
+.btn-info {
+    background-color: var(--cor-destaque);
+    border: none;
+    color: #fff;
 }
+
 .btnDetalhes {
-    background-color: var(--cor-destaque-rosa);
-    color: #fff;
-    border: none;
+    background-color: transparent;
+    color: var(--cor-destaque);
+    border: 1px solid var(--cor-destaque);
 }
+
 .btnDetalhes:hover {
-    background-color: #e91e63;
+    background-color: var(--cor-destaque);
+    color: #fff;
 }
+
 .btnEditar {
-    background-color: var(--cor-alerta);
-    color: var(--cor-texto-principal);
-    border: none;
+    background-color: transparent;
+    color: var(--cor-alerta);
+    border: 1px solid var(--cor-alerta);
 }
+
 .btnEditar:hover {
-    background-color: #e0ab00;
-}
-.export-buttons button {
-    background-color: var(--cor-texto-secundaria);
-    color: #fff;
-    border: none;
-}
-.export-buttons button:hover {
-    background-color: #495057;
-}
-
-/* Alertas */
-#notification-container .alert-success {
-    background-color: var(--cor-sucesso);
-    color: #fff;
-    border-color: #218838;
-}
-#notification-container .alert-warning {
     background-color: var(--cor-alerta);
-    color: var(--cor-texto-secundaria);
-    border-color: #e0ab00;
-}
-#notification-container .alert-danger {
-    background-color: var(--cor-erro);
-    color: #fff;
-    border-color: #bb2d3b;
-}
-#notification-container .alert-info {
-    background-color: var(--cor-destaque-rosa);
-    color: #fff;
-    border-color: #e91e63;
+    color: #121418;
 }
 
-/* FOCUS */
-:focus {
-    outline: 2px solid var(--cor-azul-principal);
-    outline-offset: 2px;
+/* ===================== TABELAS ===================== */
+.table {
+    color: var(--cor-texto-principal);
+    border-color: var(--cor-borda);
 }
 
-/* Responsividade */
-@media (max-width: 768px) {
-    .header-content h1 {
-        font-size: 1.8rem;
-    }
+.table thead th {
+    background-color: #16181d;
+    color: var(--cor-texto-mutado);
+    border-bottom: 2px solid var(--cor-borda);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
 }
-@media (max-width: 576px) {
-    body {
-        font-size: 0.9rem;
-    }
-    .container {
-        padding: 0 1rem;
-    }
+
+.table-striped>tbody>tr:nth-of-type(odd)>* {
+    background-color: rgba(255,255,255, 0.02);
+    color: var(--cor-texto-principal);
+}
+
+.table-hover>tbody>tr:hover>* {
+    background-color: var(--cor-hover-linha);
+    color: var(--cor-texto-principal);
+}
+
+/* Tabela de Detalhes Interna */
+.details-table {
+    background-color: #16181d;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.details-table td {
+    border-color: var(--cor-borda);
+}
+
+.details-table strong {
+    color: var(--cor-texto-mutado);
+}
+
+/* ===================== PAGINAÇÃO ===================== */
+.page-link {
+    background-color: var(--cor-cartao);
+    border-color: var(--cor-borda);
+    color: var(--cor-texto-principal);
+}
+
+.page-link:hover {
+    background-color: var(--cor-hover-linha);
+    border-color: var(--cor-borda);
+    color: var(--cor-destaque);
+}
+
+.page-item.active .page-link {
+    background-color: var(--cor-destaque);
+    border-color: var(--cor-destaque);
+    color: #fff;
 }
