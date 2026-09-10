@@ -21,11 +21,16 @@ body {
 
 /* LOGIN */
 .auth-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
   background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+  z-index: 99999;
 }
 .auth-box {
   background: var(--card-bg);
@@ -51,6 +56,7 @@ body {
   position: relative;
   overflow: hidden;
   box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -147,8 +153,23 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
 }
 
-/* ABAS SUPERIORES */
-.form-nav .nav-tabs { gap: 6px; }
+/* ABAS SUPERIORES COM ROLAGEM HORIZONTAL SUAVE */
+.form-nav {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.form-nav::-webkit-scrollbar { height: 4px; }
+.form-nav::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.form-nav .nav-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 6px;
+  border: none !important;
+}
+
 .form-nav .nav-tabs .nav-link {
   color: var(--text-muted);
   background-color: #f8fafc;
