@@ -529,40 +529,22 @@ document.addEventListener("DOMContentLoaded", function() {
   // ===================
   //  EXPORTAÇÕES (CSV, XLS, PDF)
   // ===================
-  
-  // Função auxiliar para pegar apenas as linhas filtradas (visíveis)
-  function getRowsToExport() {
-    const rows = caseTableBody.querySelectorAll("tr");
-    const visibleRows = [];
-    rows.forEach(row => {
-      // Ignora as linhas de detalhes expandidas e as linhas ocultas pelo filtro
-      if (row.classList.contains("details-row") || row.style.display === "none") return;
-      
-      const dataAttr = row.getAttribute("data-full");
-      if (dataAttr) {
-        visibleRows.push(JSON.parse(dataAttr));
-      }
-    });
-    return visibleRows;
-  }
-
   btnExportCSV.addEventListener("click", function() {
     const headers = Object.values(exportMapping);
     let csvContent = headers.map(h => `"${h}"`).join(";") + "\n";
   
-    const dataToExport = getRowsToExport();
-    
-    dataToExport.forEach(fullData => {
+    const rows = caseTableBody.querySelectorAll("tr");
+    rows.forEach(row => {
+      const dataAttr = row.getAttribute("data-full");
+      if (!dataAttr) return;
+      const fullData = JSON.parse(dataAttr);
       const rowData = Object.keys(exportMapping).map(key => {
-        // Trata quebras de linha e aspas duplas para não corromper a coluna
-        let cellData = (fullData[key] || "").toString().replace(/"/g, '""').replace(/\n/g, ' ');
-        return `"${cellData}"`;
+        return `"${(fullData[key] || "").toString().replace(/"/g, '""')}"`;
       });
       csvContent += rowData.join(";") + "\n";
     });
   
-    // O \uFEFF é crucial para o Excel reconhecer o formato UTF-8 (acentuação em português)
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -572,22 +554,23 @@ document.addEventListener("DOMContentLoaded", function() {
   
   btnExportXLS.addEventListener("click", function() {
     const headers = Object.values(exportMapping);
-    let tableHTML = `<table border="1"><thead><tr>`;
+    let tableHTML = `<table><thead><tr>`;
     headers.forEach(h => {
-      tableHTML += `<th style="background-color: #aed581;">${h}</th>`;
+      tableHTML += `<th>${h}</th>`;
     });
     tableHTML += `</tr></thead><tbody>`;
   
-    const dataToExport = getRowsToExport();
-    
-    dataToExport.forEach(fullData => {
+    const rows = caseTableBody.querySelectorAll("tr");
+    rows.forEach(row => {
+      const dataAttr = row.getAttribute("data-full");
+      if (!dataAttr) return;
+      const fullData = JSON.parse(dataAttr);
       const rowData = Object.keys(exportMapping).map(key => fullData[key] || "");
       tableHTML += "<tr>" + rowData.map(val => `<td>${val}</td>`).join("") + "</tr>";
     });
     tableHTML += `</tbody></table>`;
   
-    // Meta tag garante acentuação correta no Excel antigo
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"/></head><body>${tableHTML}</body></html>`;
+    const html = `<html><head><meta charset="UTF-8"/></head><body>${tableHTML}</body></html>`;
     const blob = new Blob([html], { type: "application/vnd.ms-excel" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -598,14 +581,21 @@ document.addEventListener("DOMContentLoaded", function() {
   
   btnExportPDF.addEventListener("click", function() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("l", "pt", "a3"); 
-    doc.setFontSize(10);
-    doc.text("Casos PROTEJA - Relatório Filtrado", 40, 40);
+    const doc = new jsPDF("l", "pt", "a3");
+    doc.setFontSize(6);
+    doc.text("Casos PROTEJA - Relatório", 40, 40);
     const pageWidth = doc.internal.pageSize.getWidth();
   
     const headers = Object.values(exportMapping);
-    const dataToExport = getRowsToExport();
-    const data = dataToExport.map(fullData => Object.keys(exportMapping).map(key => fullData[key] || ""));
+    const data = [];
+    const rows = caseTableBody.querySelectorAll("tr");
+    rows.forEach(row => {
+      const dataAttr = row.getAttribute("data-full");
+      if (!dataAttr) return;
+      const fullData = JSON.parse(dataAttr);
+      const rowData = Object.keys(exportMapping).map(key => fullData[key] || "");
+      data.push(rowData);
+    });
   
     doc.autoTable({
       head: [headers],
@@ -613,7 +603,7 @@ document.addEventListener("DOMContentLoaded", function() {
       startY: 60,
       margin: { left: 10, right: 10 },
       tableWidth: pageWidth - 20,
-      styles: { fontSize: 6, cellPadding: 2, overflow: 'linebreak' },
+      styles: { fontSize: 6, cellPadding: 2 },
       headStyles: { fillColor: [76, 175, 80], halign: "center", fontSize: 6 },
       bodyStyles: { halign: "left", fontSize: 6 },
       theme: "grid",
