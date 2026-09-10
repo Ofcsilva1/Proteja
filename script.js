@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
 import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBNQqq67cuuDetOJZR2EcCkH4JNXOxNW3Y",
@@ -48,6 +48,19 @@ document.addEventListener("DOMContentLoaded", function() {
     comunicacaoViolencia: "Com. Violência", encaminhamentosSolicitados: "Encaminhamento",
     datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
   };
+
+  // Gerenciamento de Sessão Automático do Firebase
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      authWrapper.style.display = "none";
+      appWrapper.style.display = "flex";
+    } else {
+      authWrapper.style.display = "flex";
+      appWrapper.style.display = "none";
+      loginSection.style.display = "block";
+      registerSection.style.display = "none";
+    }
+  });
 
   function showNotification(message, type) {
     const container = document.getElementById("notification-container");
@@ -107,17 +120,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const email = document.getElementById("username").value.trim();
     const pass = document.getElementById("password").value;
     signInWithEmailAndPassword(auth, email, pass).then(() => {
-      authWrapper.style.display = "none";
-      appWrapper.style.display = "flex";
       showNotification("Login bem-sucedido!", "success");
     }).catch(() => showNotification("Falha no login. Verifique as credenciais.", "danger"));
   });
 
   document.getElementById("btnLogout").addEventListener("click", () => {
     signOut(auth).then(() => {
-      appWrapper.style.display = "none";
-      authWrapper.style.display = "flex";
-      loginSection.style.display = "block";
+      showNotification("Você saiu do sistema.", "info");
     });
   });
 
