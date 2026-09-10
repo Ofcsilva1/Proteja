@@ -15,7 +15,8 @@
 
 <div id="notification-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-<div id="auth-wrapper" class="auth-wrapper">
+<!-- TELA DE AUTENTICAÇÃO (Visível por padrão até o Firebase autenticar) -->
+<div id="auth-wrapper" class="auth-wrapper" style="display: flex;">
   <div class="auth-box animate__animated animate__zoomIn">
     <div class="auth-brand">
       <h2>PROTEJA</h2>
@@ -66,6 +67,7 @@
   </div>
 </div>
 
+<!-- SISTEMA PRINCIPAL (Oculto por padrão até o Firebase autenticar) -->
 <div id="app-wrapper" class="app-layout" style="display: none;">
   
   <aside class="sidebar">
