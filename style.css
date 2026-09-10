@@ -67,10 +67,12 @@ body {
 }
 
 .sidebar-logo {
-  max-width: 160px;
-  height: auto;
-  object-fit: contain;
-  display: inline-block;
+    background-color: #ffffff; /* ou remova se for transparente */
+    padding: 8px;
+    border-radius: 6px;
+    max-width: 80%;
+    margin: 0 auto;
+    display: block;
 }
 
 .sidebar-menu-container { padding: 1.5rem 0; flex: 1; }
