@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
     datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
   };
 
-  // Gerenciamento de Sessão Automático do Firebase
+  // Gerenciamento de Sessão Limpo e Confiável
   onAuthStateChanged(auth, (user) => {
     if (user) {
       authWrapper.style.display = "none";
