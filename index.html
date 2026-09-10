@@ -70,10 +70,18 @@
 <!-- SISTEMA PRINCIPAL (Oculto por padrão até o Firebase autenticar) -->
 <div id="app-wrapper" class="app-layout" style="display: none;">
   
-  <aside class="sidebar">
-    <div class="sidebar-header">
-     <img src="Logo.png" alt="Logo Proteja" class="sidebar-logo" />
+ <aside class="sidebar">
+    <div class="sidebar-header-logo">
+        <img src="caminho-da-sua-logo.png" alt="Logo Proteja">
     </div>
+    
+    <!-- Restante do menu (Gerenciamento, Links, etc.) -->
+    <div class="sidebar-menu">
+        <span class="menu-title">GERENCIAMENTO</span>
+        <a href="#" class="active"><i class="..."></i> Controle de Casos</a>
+        <a href="#"><i class="..."></i> Registrar Novo Caso</a>
+    </div>
+</aside>
     
     <div class="sidebar-menu-container">
       <span class="menu-title">GERENCIAMENTO</span>
