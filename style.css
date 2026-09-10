@@ -26,7 +26,6 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
@@ -153,7 +152,7 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
 }
 
-/* ABAS SUPERIORES COM ROLAGEM HORIZONTAL SUAVE */
+/* ABAS SUPERIORES */
 .form-nav {
   width: 100%;
   overflow-x: auto;
