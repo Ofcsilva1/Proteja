@@ -60,23 +60,25 @@ flex-shrink: 0;
 }
 
 .sidebar-header {
-padding: 1.5rem 1.2rem;
-border-bottom: 1px solid rgba(255,255,255,0.08);
-background: rgba(0,0,0,0.1);
-text-align: center;
+    /* Removemos o padding lateral e mantemos apenas em cima/baixo se desejar */
+    padding: 1.5rem 0; 
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.1);
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .sidebar-logo {
-  max-width: 160px;
-  height: auto;
-  object-fit: contain;
-  display: inline-block;
-    background-color: #ffffff; /* ou remova se for transparente */
-    padding: 8px;
-    border-radius: 6px;
-    max-width: 80%;
-    margin: 0 auto;
+    width: 100%; /* Faz a imagem esticar até as bordas laterais */
+    height: auto; /* Mantém a proporção correta */
+    object-fit: cover; /* Garante que a imagem preencha o espaço sem distorcer */
     display: block;
+    /* Removemos o background-color: #ffffff; */
+    /* Removemos o padding: 8px; */
+    /* Removemos o border-radius: 6px; */
+    /* Removemos os max-width antigos para não limitar o tamanho */
 }
 
 .sidebar-menu-container { padding: 1.5rem 0; flex: 1; }
