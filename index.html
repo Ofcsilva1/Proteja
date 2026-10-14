@@ -130,6 +130,7 @@ O acesso é destinado a contas autorizadas pela instituição.
 </select>
 </div>
 <div class="col-md-3 text-end export-group">
+<button type="button" id="btnImport" class="btn btn-light border btn-sm" aria-haspopup="dialog" aria-controls="import-dialog"><i class="bi bi-upload" aria-hidden="true"></i> Importar planilha</button>
 <button type="button" id="btnExportColumns" class="btn btn-light export-columns-trigger" aria-haspopup="dialog" aria-controls="export-columns-dialog"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><span>Colunas <span id="export-column-count">13</span></span></button>
 <button id="btnExportCSV" class="btn btn-light border btn-sm" title="Exportar CSV"><i class="bi bi-filetype-csv text-secondary"></i></button>
 <button id="btnExportXLS" class="btn btn-light border btn-sm" title="Exportar Excel"><i class="bi bi-file-earmark-excel text-success"></i></button>
@@ -163,6 +164,17 @@ O acesso é destinado a contas autorizadas pela instituição.
 <nav id="pagination" class="mt-4"></nav>
 </div>
 </section>
+
+<dialog id="import-dialog" class="export-dialog import-dialog" aria-labelledby="import-title">
+<div class="export-dialog-header"><div><h3 id="import-title">Importar planilha otimizada</h3><p>Selecione o arquivo .xlsx. Cadastros e históricos serão vinculados por prontuário. Casos existentes serão ignorados.</p></div></div>
+<label for="import-file" class="form-label">Planilha otimizada (.xlsx, até 15 MB)</label>
+<input id="import-file" type="file" accept=".xlsx" class="form-control" />
+<p id="import-status" role="status" aria-live="polite"></p>
+<p id="import-summary"></p>
+<div class="import-table-wrap"><table class="table"><thead><tr><th>Aba / linha</th><th>Prontuário</th><th>Entrada</th><th>Situação</th><th>Conferência</th></tr></thead><tbody id="import-rows"></tbody></table></div>
+<label class="import-confirm"><input id="import-confirm" type="checkbox" /> Conferi a prévia e tenho uma cópia de segurança. Importar somente os registros prontos, mantendo os existentes.</label>
+<div class="export-dialog-footer"><button id="import-report" type="button" class="btn btn-outline-secondary" disabled>Baixar relatório</button><div><button id="import-close" type="button" class="btn btn-outline-secondary">Fechar</button><button id="import-save" type="button" class="btn btn-primary" disabled>Confirmar importação</button></div></div>
+</dialog>
 
 <dialog id="export-columns-dialog" class="export-dialog" aria-labelledby="export-dialog-title" aria-describedby="export-dialog-description">
 <form id="export-columns-form">

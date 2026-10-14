@@ -24,7 +24,10 @@ export const EXPORT_COLUMNS = [
   { key: "piaElaborado", label: "Plano individual elaborado", group: "Estudo e plano" },
   { key: "outrasPendencias", label: "Outras pendências", group: "Atendimentos e pendências" },
   { key: "criadoEm", label: "Criado em", group: "Histórico" },
-  { key: "atualizadoEm", label: "Atualizado em", group: "Histórico" }
+  { key: "atualizadoEm", label: "Atualizado em", group: "Histórico" },
+  { key: "dadosPlanilha", label: "Colunas originais da planilha", group: "Importação" },
+  { key: "historicoPlanilha", label: "Histórico da planilha", group: "Importação" },
+  { key: "origemImportacao", label: "Origem da importação", group: "Importação" }
 ];
 
 // Preserve the existing 13-column export unless the user changes the selection.
