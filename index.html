@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Sistema PROTEJA | Gestão de Casos</title>
+<script src="theme.js"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -17,6 +18,7 @@
 
 <!-- TELA DE AUTENTICAÇÃO (Visível por padrão até o Firebase autenticar) -->
 <div id="auth-wrapper" class="auth-wrapper">
+<button type="button" class="btn theme-toggle auth-theme-toggle" data-theme-toggle aria-pressed="false"><i class="bi bi-moon-stars" aria-hidden="true"></i><span data-theme-label>Modo noturno</span></button>
 <div class="auth-box animate__animated animate__zoomIn">
 <div class="auth-brand">
 <h2>PROTEJA</h2>
@@ -72,7 +74,8 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 
 <aside class="sidebar">
 <div class="sidebar-header">
-      <img src="Logo.png" alt="Logo Proteja" class="sidebar-logo" />
+      <img src="Logo.png" alt="Logo Proteja" class="sidebar-logo sidebar-logo--light" />
+      <img src="Logo-dark.png" alt="Logo Proteja" class="sidebar-logo sidebar-logo--dark" />
 </div>
 <div class="sidebar-menu-container">
 <span class="menu-title">GERENCIAMENTO</span>
@@ -93,8 +96,9 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 <div class="sidebar-art"></div>
 
 <div class="sidebar-footer">
-<button id="btnLogout" class="btn btn-logout w-100">
-<i class="bi bi-box-arrow-left"></i> Sair do Sistema
+<button type="button" class="btn theme-toggle w-100" data-theme-toggle aria-pressed="false"><i class="bi bi-moon-stars" aria-hidden="true"></i><span data-theme-label>Modo noturno</span></button>
+<button id="btnLogout" class="btn btn-logout w-100" aria-label="Sair do sistema" title="Sair do sistema">
+<i class="bi bi-box-arrow-left" aria-hidden="true"></i> <span class="logout-label">Sair do sistema</span>
 </button>
 </div>
 </aside>

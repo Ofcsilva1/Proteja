@@ -16,6 +16,8 @@ Configure regras do Realtime Database para exigir autenticação e limitar o ace
 
 ## Recursos
 
+- Barra lateral branca no modo claro e logo transparente no modo noturno. O botão de aparência está disponível no login e no menu; a preferência fica salva neste navegador, independentemente do acesso ao Firebase.
+
 - Login, cadastro e saída pelo Firebase Authentication.
 - Cadastro e edição dos oito grupos de informações existentes.
 - Busca por prontuário, CRIAD, responsável, técnicos e atendimentos; filtros por mês de entrada e situação.
