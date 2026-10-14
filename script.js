@@ -5,6 +5,8 @@ import { identity, readableSnapshot } from "./import-core.js";
 import { exactProntuario, matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js";
 import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js";
 import { setupViolenceForm } from "./violence-form.js";
+import { setupWorkflows } from "./workflow-ui.js";
+import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js";
 import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -44,6 +46,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let page = 1;
   let editingKey = null;
   let unsubscribeCases = null;
+  let caseDraft = null;
+  let authEpoch = 0;
+  const caseSnapshot = () => JSON.stringify([...caseForm.querySelectorAll('input,select,textarea')].map(input => [input.id, input.value, input.checked]));
+  function canLeaveCase() {
+    return $("form-section").hidden || !caseDraft || caseSnapshot() === caseDraft || window.confirm("Sair sem salvar as alterações do prontuário?");
+  }
 
   function notify(message, type = "info") {
     const alert = document.createElement("div");
@@ -81,30 +89,35 @@ document.addEventListener("DOMContentLoaded", () => {
     return messages[error?.code] || "Não foi possível concluir a operação. Tente novamente.";
   }
 
-  function toggleView(view) {
-    const isList = view === "list";
-    $("nav-list").classList.toggle("active", isList);
-    $("nav-new").classList.toggle("active", !isList);
-    $("list-section").hidden = !isList;
-    $("form-section").hidden = isList;
-    $("page-title").textContent = isList ? "Controle geral de casos" : (editingKey ? "Editar caso" : "Registrar novo caso");
-    $("page-subtitle").textContent = isList
-      ? "Acompanhe prontuários, situações e próximos atendimentos."
-      : "Registre as informações do caso nas etapas abaixo.";
-    if (!isList) window.scrollTo({ top: 0, behavior: "smooth" });
+  function toggleView(view, force = false) {
+    if (!force && !canLeaveCase()) return false;
+    for (const [name, nav, section] of [["list","nav-list","list-section"],["form","nav-new","form-section"],["agenda","nav-agenda","agenda-section"],["tasks","nav-tasks","tasks-section"]]) {
+      $(nav).classList.toggle("active", view === name); $(section).hidden = view !== name;
+    }
+    const titles = { list: ["Controle geral de casos","Acompanhe os prontuários e os indicadores da seleção."], form: [editingKey ? "Editar caso" : "Registrar novo caso","Registre as informações do caso nas etapas abaixo."], agenda: ["Agenda e atendimentos","Quem vamos atender? Consulte datas, técnicos e resultados."], tasks: ["Pendências e retornos","O que precisamos resolver? Acompanhe responsáveis e prazos."] };
+    $("page-title").textContent = titles[view][0]; $("page-subtitle").textContent = titles[view][1];
+    if (view === 'agenda' || view === 'tasks') workflows.render();
+    if (view !== "list") window.scrollTo({ top: 0, behavior: "smooth" });
+    return true;
   }
 
   function startNewCase() {
+    if (!canLeaveCase()) return;
     editingKey = null;
     caseForm.reset();
     violenceForm.fill({});
+    $("btnCaseAgenda").disabled = $("btnCaseTasks").disabled = true;
     $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click();
-    toggleView("form");
+    caseDraft = caseSnapshot(); toggleView("form", true);
     $("numero-prontuario").focus();
   }
 
   $("nav-list").addEventListener("click", (event) => { event.preventDefault(); toggleView("list"); });
   $("nav-new").addEventListener("click", (event) => { event.preventDefault(); startNewCase(); });
+  $("nav-agenda").addEventListener("click", event => { event.preventDefault(); toggleView("agenda"); });
+  $("nav-tasks").addEventListener("click", event => { event.preventDefault(); toggleView("tasks"); });
+  $("btnCaseAgenda").addEventListener("click", () => { if (editingKey) workflows.openScope("agenda", editingKey); });
+  $("btnCaseTasks").addEventListener("click", () => { if (editingKey) workflows.openScope("tarefas", editingKey); });
   $("btnEmptyNew").addEventListener("click", startNewCase);
   $("btnCancelarForm").addEventListener("click", () => toggleView("list"));
   $("show-password").addEventListener("change", (event) => { $("password").type = event.target.checked ? "text" : "password"; });
@@ -136,6 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   $("btnLogout").addEventListener("click", async () => {
+    if (!canLeaveCase()) return;
     try { await signOut(auth); notify("Você saiu do sistema."); }
     catch (error) { notify(firebaseMessage(error), "danger"); }
   });
@@ -168,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
         await push(ref(database, "casos"), fullData);
       }
       notify(editingKey ? "Registro atualizado." : "Novo caso registrado.", "success");
-      toggleView("list");
+      caseDraft = null; toggleView("list", true);
     } catch (error) { notify(firebaseMessage(error), "danger"); }
     finally { setBusy(button, false); }
   });
@@ -220,11 +234,14 @@ document.addEventListener("DOMContentLoaded", () => {
     page = Math.min(page, pages);
     const counts = { ativo: 0, encerrado_com_protecao: 0, encerrado_sem_protecao: 0, suspenso: 0, nao_competencia: 0 };
     filtered.forEach(({ data }) => { if (Object.hasOwn(counts, data.situacaoAtual)) counts[data.situacaoAtual]++; });
-    $("summary-total").textContent = filtered.length;
-    $("summary-active").textContent = counts.ativo;
-    $("summary-closed").textContent = counts.encerrado_com_protecao + counts.encerrado_sem_protecao;
-    $("summary-suspended").textContent = counts.suspenso;
-    $("summary-outside").textContent = counts.nao_competencia;
+    const summaryValues = { "summary-total": filtered.length, "summary-active": counts.ativo, "summary-closed": counts.encerrado_com_protecao + counts.encerrado_sem_protecao, "summary-suspended": counts.suspenso, "summary-outside": counts.nao_competencia };
+    for (const [id,value] of Object.entries(summaryValues)) {
+      const node = $(id), changed = node.textContent !== String(value); node.textContent = value;
+      if (changed) {
+        node.getAnimations().forEach(animation=>animation.cancel());
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) node.animate([{color:'#199664',opacity:.55,transform:'translateY(3px)'},{color:'#199664',opacity:1,transform:'translateY(0)'},{color:getComputedStyle(node).color}],{duration:550,easing:'ease-out'});
+      }
+    }
     caseTableBody.replaceChildren();
     filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach(({ key, data }) => {
       const row = document.createElement("tr"); row.dataset.key = key;
@@ -234,7 +251,10 @@ document.addEventListener("DOMContentLoaded", () => {
       badge.className = `status-badge status-${data.situacaoAtual || "unknown"}`;
       badge.textContent = statusLabels[data.situacaoAtual] || data.situacaoAtual || "Sem situação";
       statusCell.append(badge); row.append(statusCell);
-      row.append(makeCell(data.nomeCriad), makeCell(data.responsavelNome), makeCell(data.datasTexto));
+      const attendance = makeCell(attendanceSummary({key,data}));
+      const agendaLink = document.createElement('button'); agendaLink.type='button'; agendaLink.className='btn btn-sm btn-outline-secondary mt-2'; agendaLink.textContent='Ver agenda';
+      agendaLink.addEventListener('click',()=>workflows.openScope('agenda',key)); attendance.append(document.createElement('br'),agendaLink);
+      row.append(makeCell(data.nomeCriad), makeCell(data.responsavelNome), attendance);
       const actions = document.createElement("td"); actions.className = "text-end text-nowrap";
       const details = document.createElement("button"); details.type = "button"; details.className = "btn btn-sm btn-outline-secondary btnDetalhes"; details.title = "Ver detalhes"; details.setAttribute("aria-label", "Ver detalhes do caso"); details.innerHTML = '<i class="bi bi-eye"></i>';
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn btn-sm btn-outline-primary btnEditar ms-1"; edit.title = "Editar caso"; edit.setAttribute("aria-label", "Editar caso"); edit.innerHTML = '<i class="bi bi-pencil"></i>';
@@ -245,18 +265,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const next = row.nextElementSibling;
           if (next?.classList.contains("details-row")) next.remove(); else renderDetails(row, data);
         } else if (button.classList.contains("btnEditar")) {
-          editingKey = key;
-          Object.entries(fieldMap).forEach(([field, id]) => {
-            const input = $(id);
-            input.querySelectorAll?.('[data-import-option]').forEach(option => option.remove());
-            const value = data[field] || "";
-            if (input.tagName === "SELECT" && !Array.from(input.options).some(option => option.value === value)) {
-              const option = new Option(value || "Não informado", value); option.dataset.importOption = "true"; input.add(option);
-            }
-            input.value = value;
-          });
-          violenceForm.fill(data);
-          $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); toggleView("form");
+          editCase(key);
         }
       });
     });
@@ -271,7 +280,37 @@ document.addEventListener("DOMContentLoaded", () => {
       const next = document.createElement("button"); next.className = "btn btn-sm btn-outline-secondary"; next.textContent = "Próxima"; next.disabled = page === pages;
       next.addEventListener("click", () => { page++; render(); }); nav.append(prev, info, next); $("pagination").append(nav);
     }
+    workflows.render();
   }
+
+  function editCase(key) {
+    if (!canLeaveCase()) return;
+    const record = cases.find(item => item.key === key); if (!record) return;
+    editingKey = key;
+    Object.entries(fieldMap).forEach(([field,id]) => {
+      const input = $(id), value = record.data[field] || '';
+      input.querySelectorAll?.('[data-import-option]').forEach(option=>option.remove());
+      if (input.tagName === 'SELECT' && !Array.from(input.options).some(option=>option.value===value)) {
+        const option = new Option(value || 'Não informado',value); option.dataset.importOption='true'; input.add(option);
+      }
+      input.value=value;
+    });
+    violenceForm.fill(record.data); $("btnCaseAgenda").disabled = $("btnCaseTasks").disabled = false;
+    $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); caseDraft=caseSnapshot(); toggleView('form',true);
+  }
+  async function userCanWrite(uid) {
+    if (auth.currentUser?.uid !== uid) return false;
+    const access = (await get(ref(database, `access/${uid}`))).val();
+    return auth.currentUser?.uid === uid && access?.active === true && access?.canWrite === true;
+  }
+  const workflows = setupWorkflows({getCases:()=>cases,getUser:()=>auth.currentUser,canWrite:userCanWrite,openCase:editCase,notify,navigate:toggleView,
+    saveActivity: async ({caseKey,field,value,expected,uid}) => {
+      const epoch=authEpoch;
+      if (auth.currentUser?.uid !== uid) throw new Error('Entre novamente para salvar.');
+      const result=await runTransaction(ref(database,`casos/${caseKey}/${field}`),current=>auth.currentUser?.uid===uid&&authEpoch===epoch?replacementFor(current,expected,value):undefined,{applyLocally:false});
+      return result.committed;
+    }
+  });
 
   [...filterIds, "ordenacaoCasos"].forEach((id) => {
     $(id).addEventListener("input", () => { page = 1; render(); });
@@ -295,6 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   setupExports({ getData: () => filteredCases().map(({ data }) => ({ ...data,
+    agendaRegistrada: activityText({key:'',data},'agenda'), pendenciasRegistradas: activityText({key:'',data},'tarefas'),
     dadosPlanilha: readableSnapshot(data.dadosPlanilha), historicoPlanilha: readableSnapshot(data.historicoPlanilha)
   })), notify });
   const importer = setupImport({
@@ -320,11 +360,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function handleAuthState(user) {
+    authEpoch++;
     if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
     authWrapper.hidden = Boolean(user); appWrapper.hidden = !user;
     if (!user) {
       importer.reset();
       cases = [];
+      caseDraft = null;
+      workflows.reset();
       editingKey = null;
       page = 1;
       caseForm.reset();
@@ -339,10 +382,13 @@ document.addEventListener("DOMContentLoaded", () => {
       $("export-columns-dialog").close();
       caseTableBody.replaceChildren();
       ["summary-total", "summary-active", "summary-closed", "summary-suspended", "summary-outside"].forEach(id => { $(id).textContent = "0"; });
-      toggleView("list");
+      toggleView("list", true);
       return;
     }
     authStatus.textContent = "";
+    workflows.setCanWrite(false);
+    const epoch = authEpoch;
+    userCanWrite(user.uid).then(allowed => { if (auth.currentUser?.uid === user.uid && authEpoch === epoch) workflows.setCanWrite(allowed); }).catch(() => { if (auth.currentUser?.uid === user.uid && authEpoch === epoch) workflows.setCanWrite(false); });
     unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
       if (auth.currentUser?.uid !== user.uid) return;
       cases = [];
@@ -357,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (selectedYear && !years.includes(selectedYear)) page = 1;
       syncViolenceOptions();
       render();
-    }, (error) => notify(firebaseMessage(error), "danger"));
+    }, (error) => { cases=[]; editingKey=null; caseDraft=null; caseForm.reset(); violenceForm.fill({}); workflows.reset(); toggleView('list',true); render(); notify(firebaseMessage(error), "danger"); });
   }
 
   async function initializeSession() {

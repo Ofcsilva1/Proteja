@@ -414,3 +414,50 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
 .import-original dd { white-space: pre-wrap; }
 .details-grid > details { grid-column: 1 / -1; }
 [data-theme="dark"] .import-error { color: #ffb4ab; }
+.workflow-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; margin-bottom: 12px; }
+.workflow-heading h3 { margin: 0 0 8px; font-size: 1.25rem; }
+.workflow-heading p { max-width: 680px; color: var(--text-muted); font-size: .86rem; }
+.workflow-heading > .btn { flex-shrink: 0; }
+.workflow-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.workflow-summary article { padding: 18px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--card-bg); }
+.workflow-summary span { display: block; color: var(--text-muted); font-size: .82rem; }
+.workflow-summary strong { display: block; margin-top: 8px; font-size: 1.75rem; font-variant-numeric: tabular-nums; }
+.workflow-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; padding: 20px; }
+.workflow-filters label, .workflow-editor-fields label { display: grid; align-content: start; gap: 7px; min-width: 0; font-size: .82rem; }
+.workflow-filters .form-control, .workflow-filters .form-select { min-width: 0; width: 100%; }
+.workflow-filters > button { align-self: end; min-height: 46px; }
+.workflow-notice { color: var(--text-muted); margin: 12px 0; }
+.workflow-table-wrap { overflow: auto; padding: 16px; }
+.workflow-table { min-width: 800px; margin-bottom: 0; }
+.workflow-table td { vertical-align: top; max-width: 280px; overflow-wrap: anywhere; }
+.workflow-table small { display: block; margin-top: 6px; color: var(--text-muted); }
+.workflow-table details { margin-top: 8px; font-size: .82rem; }
+.workflow-table details p, .workflow-preserved { white-space: pre-wrap; overflow-wrap: anywhere; }
+.workflow-case-link { padding: 0; border: 0; background: transparent; color: var(--primary-color); text-decoration: underline; font-weight: 600; }
+.workflow-table .workflow-warning { color: #9b5b0a; }
+.workflow-empty { padding: 24px 8px; text-align: center; color: var(--text-muted); }
+.workflow-table-wrap nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 16px; }
+.workflow-legacy { margin-top: 20px; padding: 20px; }
+.workflow-legacy > summary { cursor: pointer; font-weight: 600; margin-bottom: 12px; }
+.workflow-legacy p { color: var(--text-muted); font-size: .86rem; }
+.workflow-dialog { width: min(720px, calc(100vw - 24px)); max-height: 90vh; max-height: 90dvh; padding: 24px; overflow: auto; border: 1px solid var(--border-color); border-radius: 18px; background: var(--card-bg); color: var(--text-main); box-shadow: 0 24px 80px rgb(0 0 0 / 25%); }
+.workflow-dialog::backdrop { background: rgb(12 21 40 / 55%); backdrop-filter: blur(3px); }
+.workflow-dialog h3 { font-size: 1.2rem; margin-bottom: 12px; }
+.workflow-dialog > form > p { font-size: .86rem; }
+.workflow-editor-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; padding: 0; border: 0; }
+.workflow-editor-fields .workflow-wide { grid-column: 1 / -1; }
+.workflow-editor-footer, .workflow-case-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.workflow-editor-footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+#workflow-error { color: var(--text-main); margin: 14px 0; }
+[data-theme="dark"] .workflow-warning { color: #f0c280; }
+[data-theme="dark"] .workflow-case-link { color: #bcc7ff; }
+@media (max-width: 600px) {
+  .workflow-heading { flex-direction: column; gap: 8px; }
+  .workflow-summary { gap: 8px; }
+  .workflow-summary article { padding: 12px; }
+  .workflow-summary span { font-size: .75rem; }
+  .workflow-summary strong { font-size: 1.5rem; }
+  .workflow-filters, .workflow-legacy { padding: 16px; }
+  .workflow-editor-fields { grid-template-columns: minmax(0, 1fr); }
+  .workflow-dialog { padding: 18px; }
+}
