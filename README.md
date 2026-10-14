@@ -21,6 +21,8 @@ Configure regras do Realtime Database para exigir autenticação e limitar o ace
 - Login e saída pelo Firebase Authentication, com sessão não persistente e inicialização explícita.
 - Cadastro e edição dos oito grupos de informações existentes.
 - Busca por prontuário, CRIAD, responsável, técnicos e atendimentos; filtros por mês de entrada e situação.
+- Prontuário usa correspondência exata: 05 encontra 5, e 01 encontra 1 sem incluir 101 ou 2201. Na busca geral, entradas somente numéricas também procuram o prontuário exato; nomes e demais textos continuam com busca parcial. Os identificadores salvos e exportados não são alterados.
+- Ordenação por data de entrada (mais recentes/mais antigos) ou número do prontuário (menor/maior, com ordem numérica natural). Datas ausentes ou inválidas ficam no final. A ordem vale para a lista paginada e exportações; mudar filtros ou ordem volta à primeira página. Ao sair, a ordem retorna aos mais recentes.
 - Contadores, ordenação por data de entrada, paginação e visualização de detalhes.
 - Resumo geral com prontuários, casos ativos, encerrados (com e sem proteção), suspensos e não pertencentes à competência do PROTEJA. Os cartões usam todos os cadastros recebidos, independentemente dos filtros; registros sem situação entram somente no total de prontuários. A situação Não é competência não foi renomeada para Não adesão.
 - [Importação da planilha otimizada](docs/IMPORTACAO.md) pelo botão **Importar planilha**, com prévia, correção de pendências, históricos vinculados, preservação das colunas originais, confirmação, relatório e retomada sem substituir casos existentes. Exige HTTPS e usuário autorizado para escrita. Inclua a pasta vendor ao atualizar a hospedagem.

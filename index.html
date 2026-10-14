@@ -113,11 +113,11 @@ O acesso é destinado a contas autorizadas pela instituição.
 <div class="col-md-9 d-flex gap-3 flex-wrap">
 <div class="input-group filter-wide">
 <span class="input-group-text"><i class="bi bi-search"></i></span>
-<input type="search" id="filtroBusca" class="form-control" placeholder="Buscar prontuário, CRIAD, responsável ou técnico" aria-label="Buscar casos" />
+<input type="search" id="filtroBusca" class="form-control" placeholder="Buscar prontuário exato, CRIAD, responsável ou técnico" aria-label="Buscar casos" title="Somente números: busca o prontuário exato. Exemplo: 01 encontra 1, sem incluir 101." />
 </div>
 <div class="input-group" style="max-width: 250px;">
 <span class="input-group-text"><i class="bi bi-search"></i></span>
-<input type="text" id="filtroProntuario" class="form-control" placeholder="Nº Prontuário" />
+<input type="text" id="filtroProntuario" class="form-control" placeholder="Nº exato do prontuário" aria-label="Número exato do prontuário" title="05 encontra o prontuário 5, sem incluir 15 ou 105." />
 </div>
 <div class="input-group" style="max-width: 250px;">
 <span class="input-group-text"><i class="bi bi-building"></i></span>
@@ -129,6 +129,12 @@ O acesso é destinado a contas autorizadas pela instituição.
 </select>
 <select id="filtroSituacao" class="form-select filter-status" aria-label="Filtrar por situação">
 <option value="">Todas as situações</option><option value="ativo">Ativo</option><option value="suspenso">Suspenso</option><option value="encerrado_com_protecao">Encerrado com proteção</option><option value="encerrado_sem_protecao">Encerrado sem proteção</option><option value="nao_competencia">Não é competência</option>
+</select>
+<select id="ordenacaoCasos" class="form-select" aria-label="Ordenar casos">
+<option value="recentes">Mais recentes (entrada)</option>
+<option value="antigos">Mais antigos (entrada)</option>
+<option value="numero_crescente">Prontuário: crescente</option>
+<option value="numero_decrescente">Prontuário: decrescente</option>
 </select>
 </div>
 <div class="col-md-3 text-end export-group">

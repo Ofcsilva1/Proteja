@@ -99,6 +99,7 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
 .action-bar .col-md-9 { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px !important; width: auto; padding: 0; }
 .action-bar .input-group, .action-bar .form-select { width: 100%; max-width: none !important; min-width: 0; }
 .action-bar .filter-wide { grid-column: 1 / -1; }
+.action-bar #ordenacaoCasos { grid-column: 1 / -1; width: min(100%, 320px); }
 .action-bar .input-group-text { background: #fff; }
 .action-bar .form-control, .action-bar .form-select { background-color: #f9fafe; }
 .export-group { display: flex; width: auto; align-self: start; gap: 7px; padding: 0; white-space: nowrap; }
