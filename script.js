@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+import { setupExports } from "./exports.js";
 import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -17,12 +18,6 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const auth = getAuth(app);
 const PAGE_SIZE = 10;
-const exportMapping = {
-  numeroProntuario: "Nº Prontuário", dataEntrada: "Data Entrada", docOrigem: "Doc. Origem",
-  origemCaso: "Origem", cor: "Cor", situacaoAtual: "Situação", nomeCriad: "Nome CRIAD",
-  responsavelNome: "Responsável", responsavelCpf: "CPF", comunicacaoViolencia: "Com. Violência",
-  encaminhamentosSolicitados: "Encaminhamento", datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
-};
 
 document.addEventListener("DOMContentLoaded", () => {
   const $ = (id) => document.getElementById(id);
@@ -260,39 +255,12 @@ document.addEventListener("DOMContentLoaded", () => {
     $(id).addEventListener("input", () => { page = 1; render(); });
   });
 
-  function exportData() { return filteredCases().map(({ data }) => data); }
-  function spreadsheetValue(value) {
-    const text = String(value ?? "");
-    return /^[\s]*[=+@\-]/.test(text) ? `'${text}` : text;
-  }
-  function download(blob, name) {
-    const url = URL.createObjectURL(blob); const link = document.createElement("a");
-    link.href = url; link.download = name; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-  $("btnExportCSV").addEventListener("click", () => {
-    const rows = [Object.values(exportMapping), ...exportData().map((data) => Object.keys(exportMapping).map((key) => data[key] || ""))];
-    const csv = rows.map((row) => row.map((cell) => `"${spreadsheetValue(cell).replace(/"/g, '""')}"`).join(";")).join("\r\n");
-    download(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }), "proteja_casos.csv");
-  });
-  $("btnExportXLS").addEventListener("click", () => {
-    const table = document.createElement("table");
-    [Object.values(exportMapping), ...exportData().map((data) => Object.keys(exportMapping).map((key) => data[key] || ""))].forEach((values) => {
-      const row = table.insertRow(); values.forEach((value) => { row.insertCell().textContent = spreadsheetValue(value); });
-    });
-    download(new Blob([`<html><meta charset="UTF-8">${table.outerHTML}</html>`], { type: "application/vnd.ms-excel;charset=utf-8" }), "proteja_casos.xls");
-  });
-  $("btnExportPDF").addEventListener("click", () => {
-    if (!window.jspdf?.jsPDF) { notify("A exportação PDF está indisponível no momento.", "warning"); return; }
-    const doc = new window.jspdf.jsPDF("l", "pt", "a4");
-    doc.text("Relatório de casos — PROTEJA", 40, 40);
-    doc.autoTable({ head: [Object.values(exportMapping)], body: exportData().map((data) => Object.keys(exportMapping).map((key) => data[key] || "")), startY: 55, styles: { fontSize: 7 }, headStyles: { fillColor: [22, 78, 99] } });
-    doc.save("proteja_casos.pdf");
-  });
+  setupExports({ getData: () => filteredCases().map(({ data }) => data), notify });
 
   onAuthStateChanged(auth, (user) => {
     if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
     authWrapper.hidden = Boolean(user); appWrapper.hidden = !user;
-    if (!user) { cases = []; caseTableBody.replaceChildren(); return; }
+    if (!user) { cases = []; $("export-columns-dialog").close(); caseTableBody.replaceChildren(); return; }
     unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
       cases = [];
       snapshot.forEach((child) => {

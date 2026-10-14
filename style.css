@@ -324,3 +324,36 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
   .auth-theme-toggle { top: 18px; right: 16px; }
 }
 
+.export-group { flex-wrap: wrap; }
+.export-group .export-columns-trigger { display: inline-flex; width: auto; min-width: 112px; gap: 8px; padding: 10px 12px; color: var(--text-main); font-size: .8rem; }
+.export-columns-trigger > i { font-size: 1rem; }
+#export-column-count { margin-left: 4px; padding: 2px 5px; border-radius: 5px; background: var(--app-bg); font-variant-numeric: tabular-nums; }
+.export-dialog { width: min(800px, calc(100vw - 28px)); max-height: min(90vh, 800px); max-height: min(90dvh, 800px); padding: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 18px; background: var(--card-bg); color: var(--text-main); box-shadow: 0 24px 80px rgb(0 0 0 / 25%); }
+.export-dialog::backdrop { background: rgb(12 21 40 / 55%); backdrop-filter: blur(3px); }
+.export-dialog form { display: flex; max-height: min(90vh, 800px); max-height: min(90dvh, 800px); flex-direction: column; }
+.export-dialog-header { display: flex; flex-shrink: 0; align-items: start; justify-content: space-between; gap: 18px; padding: 24px 24px 16px; }
+.export-dialog-header h3 { margin: 0 0 8px; font-size: 1.15rem; font-weight: 600; }
+.export-dialog-header p { max-width: 580px; margin: 0; color: var(--text-muted); font-size: .82rem; line-height: 1.6; }
+.export-dialog-header > .btn { min-width: 40px; min-height: 40px; }
+.export-column-presets { display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 8px; padding: 0 24px 18px; border-bottom: 1px solid var(--border-color); }
+.export-column-presets .btn { min-height: 38px; font-size: .77rem; }
+.export-column-options { display: grid; min-height: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 28px; padding: 22px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.export-column-options fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.export-column-options legend { float: none; width: auto; margin-bottom: 6px; color: var(--text-muted); font-size: .74rem; font-weight: 600; letter-spacing: .025em; }
+.export-column-choice { display: flex; min-height: 40px; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; font-size: .82rem; line-height: 1.45; cursor: pointer; }
+.export-column-choice:hover { background: var(--app-bg); }
+.export-column-choice:focus-within { outline: 2px solid #8c9bff; outline-offset: 1px; }
+.export-column-choice .form-check-input { flex: 0 0 16px; margin: 0; }
+.export-dialog-footer { display: flex; flex-shrink: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 24px; border-top: 1px solid var(--border-color); }
+.export-dialog-footer > span { color: var(--text-muted); font-size: .78rem; }
+.export-dialog-footer > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.export-dialog-footer .btn { min-height: 42px; }
+@media (max-width: 520px) {
+  .export-dialog-header { padding: 18px 16px 14px; gap: 12px; }
+  .export-column-presets { padding: 0 16px 14px; gap: 6px; }
+  .export-column-options { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 16px; }
+  .export-dialog-footer { padding: 14px 16px; }
+  .export-dialog-footer > div { width: 100%; }
+  .export-dialog-footer .btn { flex: 1; }
+}
+
