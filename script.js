@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
-import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -15,292 +14,293 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-getAnalytics(app);
 const database = getDatabase(app);
 const auth = getAuth(app);
+const PAGE_SIZE = 10;
+const exportMapping = {
+  numeroProntuario: "Nº Prontuário", dataEntrada: "Data Entrada", docOrigem: "Doc. Origem",
+  origemCaso: "Origem", cor: "Cor", situacaoAtual: "Situação", nomeCriad: "Nome CRIAD",
+  responsavelNome: "Responsável", responsavelCpf: "CPF", comunicacaoViolencia: "Com. Violência",
+  encaminhamentosSolicitados: "Encaminhamento", datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
+};
 
-document.addEventListener("DOMContentLoaded", function() {
-  const authWrapper = document.getElementById("auth-wrapper");
-  const appWrapper = document.getElementById("app-wrapper");
-  const loginSection = document.getElementById("login-section");
-  const registerSection = document.getElementById("register-section");
-  
-  const navList = document.getElementById("nav-list");
-  const navNew = document.getElementById("nav-new");
-  const listSection = document.getElementById("list-section");
-  const formSection = document.getElementById("form-section");
-  const pageTitle = document.getElementById("page-title");
-  const pageSubtitle = document.getElementById("page-subtitle");
-  const btnCancelarForm = document.getElementById("btnCancelarForm");
-
-  const caseForm = document.getElementById("case-form");
-  const btnSalvarCaso = document.getElementById("btnSalvarCaso");
+document.addEventListener("DOMContentLoaded", () => {
+  const $ = (id) => document.getElementById(id);
+  const authWrapper = $("auth-wrapper");
+  const appWrapper = $("app-wrapper");
+  const loginSection = $("login-section");
+  const registerSection = $("register-section");
+  const caseForm = $("case-form");
   const caseTableBody = document.querySelector("#case-table tbody");
-  
-  let editingRow = null;
-  let editingKey = null;
-
-  const exportMapping = {
-    numeroProntuario: "Nº Prontuário", dataEntrada: "Data Entrada",
-    docOrigem: "Doc. Origem", origemCaso: "Origem", cor: "Cor",
-    situacaoAtual: "Situação", nomeCriad: "Nome CRIAD",
-    responsavelNome: "Responsável", responsavelCpf: "CPF",
-    comunicacaoViolencia: "Com. Violência", encaminhamentosSolicitados: "Encaminhamento",
-    datasTexto: "Atendimentos", tecnicosReferencia: "Técnicos"
+  const statusLabels = {
+    ativo: "Ativo", suspenso: "Suspenso", encerrado_com_protecao: "Encerrado com proteção",
+    encerrado_sem_protecao: "Encerrado sem proteção", nao_competencia: "Não é competência"
   };
+  let cases = [];
+  let page = 1;
+  let editingKey = null;
+  let unsubscribeCases = null;
 
-  // Gerenciamento de Sessão Automático do Firebase
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      authWrapper.style.display = "none";
-      appWrapper.style.display = "flex";
-    } else {
-      authWrapper.style.display = "flex";
-      appWrapper.style.display = "none";
-      loginSection.style.display = "block";
-      registerSection.style.display = "none";
-    }
-  });
-
-  function showNotification(message, type) {
-    const container = document.getElementById("notification-container");
+  function notify(message, type = "info") {
     const alert = document.createElement("div");
-    alert.className = `alert alert-${type} shadow-sm animate__animated animate__fadeInDown`;
-    alert.innerText = message;
-    container.appendChild(alert);
-    setTimeout(() => {
-      alert.classList.replace('animate__fadeInDown', 'animate__fadeOutUp');
-      setTimeout(() => alert.remove(), 500);
-    }, 3000);
+    alert.className = `alert alert-${type} shadow-sm notification`;
+    alert.setAttribute("role", "status");
+    alert.textContent = message;
+    $("notification-container").append(alert);
+    window.setTimeout(() => alert.remove(), 4500);
+  }
+
+  function setBusy(button, busy, label = "Salvando...") {
+    if (busy) {
+      button.dataset.originalLabel = button.innerHTML;
+      button.disabled = true;
+      button.textContent = label;
+    } else {
+      button.disabled = false;
+      if (button.dataset.originalLabel) button.innerHTML = button.dataset.originalLabel;
+      delete button.dataset.originalLabel;
+    }
+  }
+
+  function firebaseMessage(error) {
+    const messages = {
+      "auth/email-already-in-use": "Este e-mail já está cadastrado.",
+      "auth/invalid-email": "Informe um e-mail válido.",
+      "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
+      "auth/invalid-credential": "E-mail ou senha incorretos.",
+      "auth/too-many-requests": "Muitas tentativas. Aguarde um pouco e tente novamente.",
+      "auth/network-request-failed": "Sem conexão. Confira sua internet e tente novamente.",
+      "PERMISSION_DENIED": "Seu usuário não tem permissão para acessar estes registros."
+    };
+    return messages[error?.code] || "Não foi possível concluir a operação. Tente novamente.";
   }
 
   function toggleView(view) {
-    navList.classList.remove('active');
-    navNew.classList.remove('active');
-    
-    if(view === 'list') {
-      formSection.style.display = "none";
-      listSection.style.display = "block";
-      navList.classList.add('active');
-      pageTitle.innerText = "Controle Geral de Casos";
-      pageSubtitle.innerText = "Gerenciamento e monitoramento de prontuários.";
-    } else {
-      listSection.style.display = "none";
-      formSection.style.display = "block";
-      navNew.classList.add('active');
-      pageTitle.innerText = editingKey ? "Editar Caso" : "Registrar Novo Caso";
-      pageSubtitle.innerText = "Preencha as informações abaixo para cadastrar um novo caso no sistema.";
-    }
+    const isList = view === "list";
+    $("nav-list").classList.toggle("active", isList);
+    $("nav-new").classList.toggle("active", !isList);
+    $("list-section").hidden = !isList;
+    $("form-section").hidden = isList;
+    $("page-title").textContent = isList ? "Controle geral de casos" : (editingKey ? "Editar caso" : "Registrar novo caso");
+    $("page-subtitle").textContent = isList
+      ? "Acompanhe prontuários, situações e próximos atendimentos."
+      : "Registre as informações do caso nas etapas abaixo.";
+    if (!isList) window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  navList.addEventListener("click", (e) => { e.preventDefault(); toggleView('list'); });
-  navNew.addEventListener("click", (e) => { 
-    e.preventDefault(); 
-    caseForm.reset();
+  function startNewCase() {
     editingKey = null;
-    editingRow = null;
-    toggleView('form'); 
-  });
-  btnCancelarForm.addEventListener("click", () => toggleView('list'));
-
-  document.getElementById("link-register").addEventListener("click", e => {
-    e.preventDefault(); loginSection.style.display = "none"; registerSection.style.display = "block";
-  });
-  
-  document.getElementById("link-login").addEventListener("click", e => {
-    e.preventDefault(); registerSection.style.display = "none"; loginSection.style.display = "block";
-  });
-
-  document.getElementById("show-password").addEventListener("change", function() {
-    document.getElementById("password").type = this.checked ? "text" : "password";
-  });
-
-  document.getElementById("login-form").addEventListener("submit", e => {
-    e.preventDefault();
-    const email = document.getElementById("username").value.trim();
-    const pass = document.getElementById("password").value;
-    signInWithEmailAndPassword(auth, email, pass).then(() => {
-      showNotification("Login bem-sucedido!", "success");
-    }).catch(() => showNotification("Falha no login. Verifique as credenciais.", "danger"));
-  });
-
-  document.getElementById("btnLogout").addEventListener("click", () => {
-    signOut(auth).then(() => {
-      showNotification("Você saiu do sistema.", "info");
-    });
-  });
-
-  btnSalvarCaso.addEventListener("click", () => {
-    if(!document.getElementById("numero-prontuario").value) {
-      showNotification("O Número do Prontuário é obrigatório.", "warning");
-      return;
-    }
-
-    const fullData = {
-      numeroProntuario: document.getElementById("numero-prontuario").value,
-      dataEntrada: document.getElementById("data-entrada").value,
-      docOrigem: document.getElementById("documento-origem").value,
-      origemCaso: document.getElementById("origem-caso").value,
-      cor: document.getElementById("cor").value,
-      detalheOrigem: document.getElementById("detalhe-origem").value,
-      situacaoAtual: document.getElementById("situacao-atual").value,
-      detalheSituacao: document.getElementById("detalhe-situacao").value,
-      nomeCriad: document.getElementById("nome-criad").value,
-      responsavelNome: document.getElementById("responsavel-nome").value,
-      responsavelCpf: document.getElementById("responsavel-cpf").value,
-      comunicacaoViolencia: document.getElementById("comunicacao-violencia").value,
-      oficioViolencia: document.getElementById("oficio-violencia").value,
-      encaminhamentosSolicitados: document.getElementById("encaminhamentos-solicitados").value,
-      detalheEncaminhamento: document.getElementById("detalhe-encaminhamento").value,
-      dataOficioEnc: document.getElementById("data-oficio-enc").value,
-      retornoSolicitado: document.getElementById("retorno-solicitado").value,
-      infoRetorno: document.getElementById("info-retorno").value,
-      estudoCaso: document.getElementById("estudo-caso").value,
-      piaElaborado: document.getElementById("pia-elaborado").value,
-      outrasPendencias: document.getElementById("outras-pendencias").value,
-      datasTexto: document.getElementById("datas-atendimento").value,
-      tecnicosReferencia: document.getElementById("tecnicos-referencia").value
-    };
-
-    if (editingKey) {
-      update(ref(database, "casos/" + editingKey), fullData).then(() => {
-        showNotification("Registro atualizado com sucesso!", "success");
-        toggleView('list');
-      });
-    } else {
-      push(ref(database, "casos"), fullData).then(() => {
-        showNotification("Novo caso registrado!", "success");
-        toggleView('list');
-      });
-    }
-  });
-
-  onValue(ref(database), (snapshot) => {
-    caseTableBody.innerHTML = "";
-    snapshot.forEach(child => {
-      const data = child.val();
-      
-      // Adicione esta linha para ignorar usuários e mostrar só casos
-      if (!data.numeroProntuario) return; 
-      
-      const tr = document.createElement("tr");
-      tr.setAttribute("data-full", JSON.stringify(data));
-      tr.setAttribute("data-key", child.key);
-      
-      // O resto do código continua igual...
-      
-      let badgeColor = data.situacaoAtual === 'ativo' ? 'bg-success' : 'bg-secondary';
-      
-      tr.innerHTML = `
-        <td><strong>${data.numeroProntuario || "-"}</strong></td>
-        <td>${data.dataEntrada || "-"}</td>
-        <td><span class="badge ${badgeColor}">${data.situacaoAtual || "-"}</span></td>
-        <td>${data.nomeCriad || "-"}</td>
-        <td>${data.responsavelNome || "-"}</td>
-        <td>${data.datasTexto || "-"}</td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary btnDetalhes" title="Ver Detalhes"><i class="bi bi-eye"></i></button>
-          <button class="btn btn-sm btn-outline-warning btnEditar" title="Editar Caso"><i class="bi bi-pencil"></i></button>
-        </td>
-      `;
-      caseTableBody.appendChild(tr);
-    });
-  });
-
-  caseTableBody.addEventListener("click", e => {
-    const btn = e.target.closest("button");
-    if(!btn) return;
-    const row = btn.closest("tr");
-    const data = JSON.parse(row.getAttribute("data-full"));
-
-    if (btn.classList.contains("btnEditar")) {
-      editingKey = row.getAttribute("data-key");
-      editingRow = row;
-      Object.keys(data).forEach(key => {
-        const input = document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase());
-        if(input) input.value = data[key];
-      });
-      toggleView('form');
-    }
-    
-    if (btn.classList.contains("btnDetalhes")) {
-      const nextRow = row.nextElementSibling;
-      if (nextRow && nextRow.classList.contains("details-row")) {
-        nextRow.remove();
-      } else {
-        const detailHtml = `
-          <tr class="details-row"><td colspan="7">
-            <table class="details-table w-100">
-              <tr>
-                <td><strong>Doc. Origem:</strong> ${data.docOrigem || "-"}</td>
-                <td><strong>Comunicação Violência:</strong> ${data.comunicacaoViolencia || "-"}</td>
-              </tr>
-              <tr>
-                <td><strong>Detalhe Origem:</strong> ${data.detalheOrigem || "-"}</td>
-                <td><strong>Encaminhamento:</strong> ${data.encaminhamentosSolicitados || "-"}</td>
-              </tr>
-              <tr>
-                <td><strong>Técnicos:</strong> ${data.tecnicosReferencia || "-"}</td>
-                <td><strong>Pendências:</strong> ${data.outrasPendencias || "-"}</td>
-              </tr>
-            </table>
-          </td></tr>
-        `;
-        row.insertAdjacentHTML("afterend", detailHtml);
-      }
-    }
-  });
-
-  function applyFilters() {
-    const valPront = document.getElementById("filtroProntuario").value.toLowerCase();
-    const valCriad = document.getElementById("filtroCriad").value.toLowerCase();
-    
-    document.querySelectorAll("#case-table tbody tr:not(.details-row)").forEach(row => {
-      const txtPront = row.cells[0].innerText.toLowerCase();
-      const txtCriad = row.cells[3].innerText.toLowerCase();
-      
-      const match = txtPront.includes(valPront) && txtCriad.includes(valCriad);
-      row.style.display = match ? "" : "none";
-      if(row.nextElementSibling && row.nextElementSibling.classList.contains('details-row')){
-          row.nextElementSibling.style.display = match ? "" : "none";
-      }
-    });
-  }
-  document.getElementById("filtroProntuario").addEventListener("keyup", applyFilters);
-  document.getElementById("filtroCriad").addEventListener("keyup", applyFilters);
-
-  function getVisibleData() {
-    const rows = Array.from(caseTableBody.querySelectorAll("tr:not(.details-row)")).filter(r => r.style.display !== "none");
-    return rows.map(r => JSON.parse(r.getAttribute("data-full")));
+    caseForm.reset();
+    $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click();
+    toggleView("form");
+    $("numero-prontuario").focus();
   }
 
-  document.getElementById("btnExportCSV").addEventListener("click", () => {
-    const data = getVisibleData();
-    let csv = Object.values(exportMapping).join(";") + "\n";
-    data.forEach(d => {
-      csv += Object.keys(exportMapping).map(k => `"${(d[k]||"").toString().replace(/"/g,'""')}"`).join(";") + "\n";
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "proteja_casos.csv"; link.click();
+  $("nav-list").addEventListener("click", (event) => { event.preventDefault(); toggleView("list"); });
+  $("nav-new").addEventListener("click", (event) => { event.preventDefault(); startNewCase(); });
+  $("btnEmptyNew").addEventListener("click", startNewCase);
+  $("btnCancelarForm").addEventListener("click", () => toggleView("list"));
+  $("link-register").addEventListener("click", (event) => {
+    event.preventDefault(); loginSection.hidden = true; registerSection.hidden = false; $("email-numero").focus();
+  });
+  $("link-login").addEventListener("click", (event) => {
+    event.preventDefault(); registerSection.hidden = true; loginSection.hidden = false; $("username").focus();
+  });
+  $("show-password").addEventListener("change", (event) => { $("password").type = event.target.checked ? "text" : "password"; });
+
+  $("login-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('[type="submit"]');
+    setBusy(button, true, "Acessando...");
+    try {
+      await signInWithEmailAndPassword(auth, $("username").value.trim(), $("password").value);
+      notify("Acesso realizado com sucesso.", "success");
+    } catch (error) { notify(firebaseMessage(error), "danger"); }
+    finally { setBusy(button, false); }
   });
 
-  document.getElementById("btnExportXLS").addEventListener("click", () => {
-    const data = getVisibleData();
-    let html = `<table border="1"><thead><tr>${Object.values(exportMapping).map(h=>`<th style="background:#0d6efd;color:#fff;">${h}</th>`).join("")}</tr></thead><tbody>`;
-    data.forEach(d => {
-      html += `<tr>${Object.keys(exportMapping).map(k=>`<td>${d[k]||""}</td>`).join("")}</tr>`;
-    });
-    html += `</tbody></table>`;
-    const blob = new Blob([`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><meta charset="UTF-8"/><body>${html}</body></html>`], { type: "application/vnd.ms-excel" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "proteja_casos.xls"; link.click();
+  $("register-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const password = $("senha").value;
+    if (password !== $("confirmar-senha").value) {
+      notify("As senhas não coincidem.", "warning"); $("confirmar-senha").focus(); return;
+    }
+    const button = event.currentTarget.querySelector('[type="submit"]');
+    setBusy(button, true, "Criando conta...");
+    try {
+      await createUserWithEmailAndPassword(auth, $("email-numero").value.trim(), password);
+      notify("Conta criada com sucesso.", "success");
+    } catch (error) { notify(firebaseMessage(error), "danger"); }
+    finally { setBusy(button, false); }
   });
-  
-  document.getElementById("btnExportPDF").addEventListener("click", () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("l", "pt", "a4");
-    doc.text("Relatório de Casos - PROTEJA", 40, 40);
-    const data = getVisibleData().map(d => Object.keys(exportMapping).map(k => d[k]||""));
-    doc.autoTable({ head: [Object.values(exportMapping)], body: data, startY: 50, styles: { fontSize: 7 }});
+
+  $("btnLogout").addEventListener("click", async () => {
+    try { await signOut(auth); notify("Você saiu do sistema."); }
+    catch (error) { notify(firebaseMessage(error), "danger"); }
+  });
+
+  const fieldMap = {
+    numeroProntuario: "numero-prontuario", dataEntrada: "data-entrada", docOrigem: "documento-origem",
+    origemCaso: "origem-caso", cor: "cor", detalheOrigem: "detalhe-origem", situacaoAtual: "situacao-atual",
+    detalheSituacao: "detalhe-situacao", nomeCriad: "nome-criad", responsavelNome: "responsavel-nome",
+    responsavelCpf: "responsavel-cpf", comunicacaoViolencia: "comunicacao-violencia", oficioViolencia: "oficio-violencia",
+    encaminhamentosSolicitados: "encaminhamentos-solicitados", detalheEncaminhamento: "detalhe-encaminhamento",
+    dataOficioEnc: "data-oficio-enc", retornoSolicitado: "retorno-solicitado", infoRetorno: "info-retorno",
+    estudoCaso: "estudo-caso", piaElaborado: "pia-elaborado", outrasPendencias: "outras-pendencias",
+    datasTexto: "datas-atendimento", tecnicosReferencia: "tecnicos-referencia"
+  };
+
+  caseForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!caseForm.reportValidity()) return;
+    const button = $("btnSalvarCaso");
+    const fullData = Object.fromEntries(Object.entries(fieldMap).map(([key, id]) => [key, $(id).value.trim()]));
+    fullData.atualizadoEm = new Date().toISOString();
+    setBusy(button, true);
+    try {
+      if (editingKey) await update(ref(database, `casos/${editingKey}`), fullData);
+      else {
+        fullData.criadoEm = new Date().toISOString();
+        await push(ref(database, "casos"), fullData);
+      }
+      notify(editingKey ? "Registro atualizado." : "Novo caso registrado.", "success");
+      toggleView("list");
+    } catch (error) { notify(firebaseMessage(error), "danger"); }
+    finally { setBusy(button, false); }
+  });
+  $("btnSalvarCaso").type = "submit";
+
+  function filteredCases() {
+    const query = $("filtroBusca").value.trim().toLocaleLowerCase("pt-BR");
+    const numero = $("filtroProntuario").value.trim().toLocaleLowerCase("pt-BR");
+    const criad = $("filtroCriad").value.trim().toLocaleLowerCase("pt-BR");
+    const mes = $("filtroMes").value;
+    const status = $("filtroSituacao").value;
+    return cases.filter(({ data }) => {
+      const searchable = [data.numeroProntuario, data.nomeCriad, data.responsavelNome, data.tecnicosReferencia, data.datasTexto]
+        .join(" ").toLocaleLowerCase("pt-BR");
+      const entryMonth = data.dataEntrada ? new Date(`${data.dataEntrada}T12:00:00`).getMonth() + 1 : "";
+      return (!query || searchable.includes(query)) &&
+        (!numero || String(data.numeroProntuario || "").toLocaleLowerCase("pt-BR").includes(numero)) &&
+        (!criad || String(data.nomeCriad || "").toLocaleLowerCase("pt-BR").includes(criad)) &&
+        (!mes || String(entryMonth) === mes) && (!status || data.situacaoAtual === status);
+    }).sort((a, b) => String(b.data.dataEntrada || "").localeCompare(String(a.data.dataEntrada || "")));
+  }
+
+  function makeCell(text, className = "") {
+    const td = document.createElement("td"); td.textContent = text || "—"; if (className) td.className = className; return td;
+  }
+
+  function renderDetails(row, data) {
+    const detailRow = document.createElement("tr"); detailRow.className = "details-row";
+    const cell = document.createElement("td"); cell.colSpan = 7;
+    const grid = document.createElement("div"); grid.className = "details-grid";
+    const details = [
+      ["Documento de origem", data.docOrigem], ["Origem", data.origemCaso], ["Detalhamento", data.detalheOrigem],
+      ["Comunicação da violência", data.comunicacaoViolencia], ["Encaminhamento", data.encaminhamentosSolicitados],
+      ["Retorno solicitado", data.retornoSolicitado], ["Técnicos", data.tecnicosReferencia], ["Atendimentos", data.datasTexto],
+      ["Pendências", data.outrasPendencias]
+    ];
+    details.forEach(([label, value]) => {
+      if (!value) return;
+      const item = document.createElement("div"); const strong = document.createElement("strong");
+      strong.textContent = `${label}: `; item.append(strong, document.createTextNode(value)); grid.append(item);
+    });
+    cell.append(grid); detailRow.append(cell); row.after(detailRow);
+  }
+
+  function render() {
+    const filtered = filteredCases();
+    const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    page = Math.min(page, pages);
+    const active = cases.filter(({ data }) => data.situacaoAtual === "ativo").length;
+    $("summary-total").textContent = cases.length;
+    $("summary-active").textContent = active;
+    $("summary-filtered").textContent = filtered.length;
+    caseTableBody.replaceChildren();
+    filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach(({ key, data }) => {
+      const row = document.createElement("tr"); row.dataset.key = key;
+      row.append(makeCell(data.numeroProntuario, "case-number"));
+      row.append(makeCell(data.dataEntrada ? new Date(`${data.dataEntrada}T12:00:00`).toLocaleDateString("pt-BR") : "—"));
+      const statusCell = document.createElement("td"); const badge = document.createElement("span");
+      badge.className = `status-badge status-${data.situacaoAtual || "unknown"}`;
+      badge.textContent = statusLabels[data.situacaoAtual] || data.situacaoAtual || "Sem situação";
+      statusCell.append(badge); row.append(statusCell);
+      row.append(makeCell(data.nomeCriad), makeCell(data.responsavelNome), makeCell(data.datasTexto));
+      const actions = document.createElement("td"); actions.className = "text-end text-nowrap";
+      const details = document.createElement("button"); details.type = "button"; details.className = "btn btn-sm btn-outline-secondary btnDetalhes"; details.title = "Ver detalhes"; details.setAttribute("aria-label", "Ver detalhes do caso"); details.innerHTML = '<i class="bi bi-eye"></i>';
+      const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn btn-sm btn-outline-primary btnEditar ms-1"; edit.title = "Editar caso"; edit.setAttribute("aria-label", "Editar caso"); edit.innerHTML = '<i class="bi bi-pencil"></i>';
+      actions.append(details, edit); row.append(actions); caseTableBody.append(row);
+      row.addEventListener("click", (event) => {
+        const button = event.target.closest("button"); if (!button) return;
+        if (button.classList.contains("btnDetalhes")) {
+          const next = row.nextElementSibling;
+          if (next?.classList.contains("details-row")) next.remove(); else renderDetails(row, data);
+        } else if (button.classList.contains("btnEditar")) {
+          editingKey = key;
+          Object.entries(fieldMap).forEach(([field, id]) => { $(id).value = data[field] || ""; });
+          $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); toggleView("form");
+        }
+      });
+    });
+    $("empty-state").hidden = filtered.length > 0;
+    $("case-table").hidden = filtered.length === 0;
+    $("pagination").replaceChildren();
+    if (pages > 1) {
+      const nav = document.createElement("div"); nav.className = "pagination-controls";
+      const info = document.createElement("span"); info.textContent = `Página ${page} de ${pages}`;
+      const prev = document.createElement("button"); prev.className = "btn btn-sm btn-outline-secondary"; prev.textContent = "Anterior"; prev.disabled = page === 1;
+      prev.addEventListener("click", () => { page--; render(); });
+      const next = document.createElement("button"); next.className = "btn btn-sm btn-outline-secondary"; next.textContent = "Próxima"; next.disabled = page === pages;
+      next.addEventListener("click", () => { page++; render(); }); nav.append(prev, info, next); $("pagination").append(nav);
+    }
+  }
+
+  ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao"].forEach((id) => {
+    $(id).addEventListener("input", () => { page = 1; render(); });
+  });
+
+  function exportData() { return filteredCases().map(({ data }) => data); }
+  function spreadsheetValue(value) {
+    const text = String(value ?? "");
+    return /^[\s]*[=+@\-]/.test(text) ? `'${text}` : text;
+  }
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob); const link = document.createElement("a");
+    link.href = url; link.download = name; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  $("btnExportCSV").addEventListener("click", () => {
+    const rows = [Object.values(exportMapping), ...exportData().map((data) => Object.keys(exportMapping).map((key) => data[key] || ""))];
+    const csv = rows.map((row) => row.map((cell) => `"${spreadsheetValue(cell).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    download(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }), "proteja_casos.csv");
+  });
+  $("btnExportXLS").addEventListener("click", () => {
+    const table = document.createElement("table");
+    [Object.values(exportMapping), ...exportData().map((data) => Object.keys(exportMapping).map((key) => data[key] || ""))].forEach((values) => {
+      const row = table.insertRow(); values.forEach((value) => { row.insertCell().textContent = spreadsheetValue(value); });
+    });
+    download(new Blob([`<html><meta charset="UTF-8">${table.outerHTML}</html>`], { type: "application/vnd.ms-excel;charset=utf-8" }), "proteja_casos.xls");
+  });
+  $("btnExportPDF").addEventListener("click", () => {
+    if (!window.jspdf?.jsPDF) { notify("A exportação PDF está indisponível no momento.", "warning"); return; }
+    const doc = new window.jspdf.jsPDF("l", "pt", "a4");
+    doc.text("Relatório de casos — PROTEJA", 40, 40);
+    doc.autoTable({ head: [Object.values(exportMapping)], body: exportData().map((data) => Object.keys(exportMapping).map((key) => data[key] || "")), startY: 55, styles: { fontSize: 7 }, headStyles: { fillColor: [22, 78, 99] } });
     doc.save("proteja_casos.pdf");
   });
+
+  onAuthStateChanged(auth, (user) => {
+    if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
+    authWrapper.hidden = Boolean(user); appWrapper.hidden = !user;
+    if (!user) { cases = []; caseTableBody.replaceChildren(); return; }
+    unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
+      cases = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        if (data && data.numeroProntuario) cases.push({ key: child.key, data });
+      });
+      render();
+    }, (error) => notify(firebaseMessage(error), "danger"));
+  });
 });
+

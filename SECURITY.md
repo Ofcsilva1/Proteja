@@ -1,21 +1,12 @@
-# Security Policy
+# Segurança
 
-## Supported Versions
+## Dados sensíveis
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Os registros do PROTEJA podem conter dados pessoais e informações relacionadas à violência. Mantenha o Realtime Database em modo restrito, exija autenticação e conceda acesso somente às pessoas autorizadas pela organização. Não use regras que permitam leitura ou escrita pública, nem trate a chave de configuração do Firebase no navegador como controle de acesso.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+O repositório não contém as regras atuais do Firebase nem um fluxo de autorização por função/equipe. Antes de liberar a aplicação para usuários, revise as regras diretamente no projeto Firebase e confirme que a criação de contas está limitada ao público autorizado.
 
-## Reporting a Vulnerability
+## Relato de vulnerabilidades
 
-Use this section to tell people how to report a vulnerability.
+Não publique dados de casos, credenciais ou detalhes exploráveis em issues públicas. Use o recurso de relatório privado de vulnerabilidades do GitHub para este repositório, se estiver habilitado, ou entre em contato com o mantenedor por um canal privado antes de divulgar o problema.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.

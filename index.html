@@ -16,7 +16,7 @@
 <div id="notification-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
 <!-- TELA DE AUTENTICAÇÃO (Visível por padrão até o Firebase autenticar) -->
-<div id="auth-wrapper" class="auth-wrapper" style="display: flex;">
+<div id="auth-wrapper" class="auth-wrapper">
 <div class="auth-box animate__animated animate__zoomIn">
 <div class="auth-brand">
 <h2>PROTEJA</h2>
@@ -44,7 +44,7 @@ Não tem conta? <a href="#" id="link-register">Criar agora</a>
 </p>
 </section>
 
-<section id="register-section" style="display: none;">
+<section id="register-section" hidden>
 <form id="register-form">
 <div class="mb-3">
 <label class="form-label">E-mail de Cadastro:</label>
@@ -68,7 +68,7 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 </div>
 
 <!-- SISTEMA PRINCIPAL (Oculto por padrão até o Firebase autenticar) -->
-<div id="app-wrapper" class="app-layout" style="display: none;">
+<div id="app-wrapper" class="app-layout" hidden>
 
 <aside class="sidebar">
 <div class="sidebar-header">
@@ -114,9 +114,18 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 <div class="content-body">
 
 <section id="list-section" class="animate__animated animate__fadeIn">
+<div class="summary-grid" aria-label="Resumo dos casos">
+<article class="summary-card"><span class="summary-icon"><i class="bi bi-folder2-open"></i></span><div><span class="summary-label">Casos cadastrados</span><strong id="summary-total">0</strong></div></article>
+<article class="summary-card"><span class="summary-icon summary-icon-green"><i class="bi bi-check2-circle"></i></span><div><span class="summary-label">Em acompanhamento</span><strong id="summary-active">0</strong></div></article>
+<article class="summary-card"><span class="summary-icon summary-icon-blue"><i class="bi bi-funnel"></i></span><div><span class="summary-label">Resultados encontrados</span><strong id="summary-filtered">0</strong></div></article>
+</div>
 <div class="action-bar card-panel mb-3">
 <div class="row align-items-center w-100">
 <div class="col-md-9 d-flex gap-3 flex-wrap">
+<div class="input-group filter-wide">
+<span class="input-group-text"><i class="bi bi-search"></i></span>
+<input type="search" id="filtroBusca" class="form-control" placeholder="Buscar prontuário, CRIAD, responsável ou técnico" aria-label="Buscar casos" />
+</div>
 <div class="input-group" style="max-width: 250px;">
 <span class="input-group-text"><i class="bi bi-search"></i></span>
 <input type="text" id="filtroProntuario" class="form-control" placeholder="Nº Prontuário" />
@@ -126,8 +135,11 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 <input type="text" id="filtroCriad" class="form-control" placeholder="Nome CRIAD" />
 </div>
 <select id="filtroMes" class="form-select" style="max-width: 180px;">
-<option value="">Todos os Meses</option>
-<option value="Janeiro">Janeiro</option><option value="Fevereiro">Fevereiro</option><option value="Março">Março</option><option value="Abril">Abril</option><option value="Maio">Maio</option><option value="Junho">Junho</option><option value="Julho">Julho</option><option value="Agosto">Agosto</option><option value="Setembro">Setembro</option><option value="Outubro">Outubro</option><option value="Novembro">Novembro</option><option value="Dezembro">Dezembro</option>
+<option value="">Todos os meses</option>
+<option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+</select>
+<select id="filtroSituacao" class="form-select filter-status" aria-label="Filtrar por situação">
+<option value="">Todas as situações</option><option value="ativo">Ativo</option><option value="suspenso">Suspenso</option><option value="encerrado_com_protecao">Encerrado com proteção</option><option value="encerrado_sem_protecao">Encerrado sem proteção</option><option value="nao_competencia">Não é competência</option>
 </select>
 </div>
 <div class="col-md-3 text-end export-group">
@@ -136,6 +148,13 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 <button id="btnExportPDF" class="btn btn-light border btn-sm" title="Exportar PDF"><i class="bi bi-file-earmark-pdf text-danger"></i></button>
 </div>
 </div>
+</div>
+
+<div id="empty-state" class="empty-state" hidden>
+<span class="empty-icon"><i class="bi bi-folder2-open"></i></span>
+<h3>Nenhum caso encontrado</h3>
+<p>Altere os filtros ou registre um novo caso para começar.</p>
+<button type="button" class="btn btn-primary" id="btnEmptyNew"><i class="bi bi-plus-lg me-1"></i>Registrar caso</button>
 </div>
 
 <div class="card-panel table-responsive">
@@ -157,7 +176,7 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 </div>
 </section>
 
-<section id="form-section" style="display: none;" class="animate__animated">
+<section id="form-section" hidden class="animate__animated">
 <div class="card-panel form-card">
 
 <nav class="form-nav mb-4">
@@ -366,7 +385,7 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 
 <div class="form-footer mt-4 pt-3 border-top d-flex justify-content-end gap-2">
 <button type="button" class="btn btn-outline-secondary px-4" id="btnCancelarForm"><i class="bi bi-x-lg"></i> Cancelar</button>
-<button type="button" id="btnSalvarCaso" class="btn btn-primary px-4"><i class="bi bi-save"></i> Salvar Registro</button>
+<button type="submit" id="btnSalvarCaso" class="btn btn-primary px-4"><i class="bi bi-save"></i> Salvar registro</button>
 </div>
 </form>
 </div>
@@ -383,3 +402,4 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 <script type="module" src="script.js"></script>
 </body>
 </html>
+
