@@ -211,10 +211,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const filtered = filteredCases();
     const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     page = Math.min(page, pages);
-    const active = cases.filter(({ data }) => data.situacaoAtual === "ativo").length;
+    const counts = { ativo: 0, encerrado_com_protecao: 0, encerrado_sem_protecao: 0, suspenso: 0, nao_competencia: 0 };
+    cases.forEach(({ data }) => { if (Object.hasOwn(counts, data.situacaoAtual)) counts[data.situacaoAtual]++; });
     $("summary-total").textContent = cases.length;
-    $("summary-active").textContent = active;
-    $("summary-filtered").textContent = filtered.length;
+    $("summary-active").textContent = counts.ativo;
+    $("summary-closed").textContent = counts.encerrado_com_protecao + counts.encerrado_sem_protecao;
+    $("summary-suspended").textContent = counts.suspenso;
+    $("summary-outside").textContent = counts.nao_competencia;
     caseTableBody.replaceChildren();
     filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach(({ key, data }) => {
       const row = document.createElement("tr"); row.dataset.key = key;
@@ -306,7 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao"].forEach(id => { $(id).value = ""; });
       $("export-columns-dialog").close();
       caseTableBody.replaceChildren();
-      ["summary-total", "summary-active", "summary-filtered"].forEach(id => { $(id).textContent = "0"; });
+      ["summary-total", "summary-active", "summary-closed", "summary-suspended", "summary-outside"].forEach(id => { $(id).textContent = "0"; });
       toggleView("list");
       return;
     }

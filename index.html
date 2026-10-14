@@ -102,9 +102,11 @@ O acesso é destinado a contas autorizadas pela instituição.
 
 <section id="list-section" class="animate__animated animate__fadeIn">
 <div class="summary-grid" aria-label="Resumo dos casos">
-<article class="summary-card"><span class="summary-icon"><i class="bi bi-folder2-open"></i></span><div><span class="summary-label">Casos cadastrados</span><strong id="summary-total">0</strong></div></article>
-<article class="summary-card"><span class="summary-icon summary-icon-green"><i class="bi bi-check2-circle"></i></span><div><span class="summary-label">Em acompanhamento</span><strong id="summary-active">0</strong></div></article>
-<article class="summary-card"><span class="summary-icon summary-icon-blue"><i class="bi bi-funnel"></i></span><div><span class="summary-label">Resultados encontrados</span><strong id="summary-filtered">0</strong></div></article>
+<article class="summary-card"><span class="summary-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></span><div><span class="summary-label">Prontuários</span><strong id="summary-total">0</strong></div></article>
+<article class="summary-card"><span class="summary-icon summary-icon-green"><i class="bi bi-check2-circle" aria-hidden="true"></i></span><div><span class="summary-label">Casos ativos</span><strong id="summary-active">0</strong></div></article>
+<article class="summary-card" title="Soma dos casos encerrados com proteção e sem proteção"><span class="summary-icon summary-icon-closed"><i class="bi bi-archive" aria-hidden="true"></i></span><div><span class="summary-label">Casos encerrados</span><strong id="summary-closed">0</strong></div></article>
+<article class="summary-card"><span class="summary-icon summary-icon-blue"><i class="bi bi-pause-circle" aria-hidden="true"></i></span><div><span class="summary-label">Casos suspensos</span><strong id="summary-suspended">0</strong></div></article>
+<article class="summary-card"><span class="summary-icon summary-icon-outside"><i class="bi bi-arrow-up-right-circle" aria-hidden="true"></i></span><div><span class="summary-label">Não é competência do PROTEJA</span><strong id="summary-outside">0</strong></div></article>
 </div>
 <div class="action-bar card-panel mb-3">
 <div class="row align-items-center w-100">
@@ -130,7 +132,7 @@ O acesso é destinado a contas autorizadas pela instituição.
 </select>
 </div>
 <div class="col-md-3 text-end export-group">
-<button type="button" id="btnImport" class="btn btn-light border btn-sm" aria-haspopup="dialog" aria-controls="import-dialog"><i class="bi bi-upload" aria-hidden="true"></i> Importar planilha</button>
+<button type="button" id="btnImport" class="btn btn-light border import-trigger" aria-haspopup="dialog" aria-controls="import-dialog"><i class="bi bi-upload" aria-hidden="true"></i><span>Importar planilha</span></button>
 <button type="button" id="btnExportColumns" class="btn btn-light export-columns-trigger" aria-haspopup="dialog" aria-controls="export-columns-dialog"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><span>Colunas <span id="export-column-count">13</span></span></button>
 <button id="btnExportCSV" class="btn btn-light border btn-sm" title="Exportar CSV"><i class="bi bi-filetype-csv text-secondary"></i></button>
 <button id="btnExportXLS" class="btn btn-light border btn-sm" title="Exportar Excel"><i class="bi bi-file-earmark-excel text-success"></i></button>
