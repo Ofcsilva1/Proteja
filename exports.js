@@ -27,7 +27,10 @@ export const EXPORT_COLUMNS = [
   { key: "atualizadoEm", label: "Atualizado em", group: "Histórico" },
   { key: "dadosPlanilha", label: "Colunas originais da planilha", group: "Importação" },
   { key: "historicoPlanilha", label: "Histórico da planilha", group: "Importação" },
-  { key: "origemImportacao", label: "Origem da importação", group: "Importação" }
+  { key: "origemImportacao", label: "Origem da importação", group: "Importação" },
+  { key: "tipoViolencia", label: "Tipo de violência", group: "Violência" },
+  { key: "violenciaSexual", label: "Sexual", group: "Violência" },
+  { key: "outrasViolencias", label: "Outros tipos de violência", group: "Violência" }
 ];
 
 // Preserve the existing 13-column export unless the user changes the selection.

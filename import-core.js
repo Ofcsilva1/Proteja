@@ -35,6 +35,7 @@ export function dateValue(value) {
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === iso ? iso : '';
 }
 const FIELD_HEADERS = {
+  tipoViolencia: ['Tipo de violência'], violenciaSexual: ['Sexual'], outrasViolencias: ['Outros'],
   docOrigem: ['Documento de origem (se houver)'], origemCaso: ['Origem do caso recebido no PROTEJA'],
   cor: ['COR'], detalheOrigem: ['Detalhamento da origem que encaminhou a demanda'],
   detalheSituacao: ['Detalhamento da situação'], nomeCriad: ['Nome da CRIAD'],

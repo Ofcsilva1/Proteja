@@ -101,7 +101,7 @@ O acesso é destinado a contas autorizadas pela instituição.
 <div class="content-body">
 
 <section id="list-section" class="animate__animated animate__fadeIn">
-<div class="summary-grid" aria-label="Resumo dos casos">
+<div class="summary-grid" aria-label="Resumo dos casos que correspondem aos filtros">
 <article class="summary-card"><span class="summary-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></span><div><span class="summary-label">Prontuários</span><strong id="summary-total">0</strong></div></article>
 <article class="summary-card"><span class="summary-icon summary-icon-green"><i class="bi bi-check2-circle" aria-hidden="true"></i></span><div><span class="summary-label">Casos ativos</span><strong id="summary-active">0</strong></div></article>
 <article class="summary-card" title="Soma dos casos encerrados com proteção e sem proteção"><span class="summary-icon summary-icon-closed"><i class="bi bi-archive" aria-hidden="true"></i></span><div><span class="summary-label">Casos encerrados</span><strong id="summary-closed">0</strong></div></article>
@@ -133,6 +133,13 @@ O acesso é destinado a contas autorizadas pela instituição.
 <select id="filtroSituacao" class="form-select filter-status" aria-label="Filtrar por situação">
 <option value="">Todas as situações</option><option value="ativo">Ativo</option><option value="suspenso">Suspenso</option><option value="encerrado_com_protecao">Encerrado com proteção</option><option value="encerrado_sem_protecao">Encerrado sem proteção</option><option value="nao_competencia">Não é competência</option>
 </select>
+<select id="filtroViolencia" class="form-select" aria-label="Filtrar por tipo de violência">
+<option value="">Todos os tipos de violência</option>
+</select>
+<select id="filtroViolenciaSexual" class="form-select" aria-label="Filtrar por subtipo de violência sexual">
+<option value="">Todos os subtipos sexuais</option>
+</select>
+<button id="btnLimparFiltros" type="button" class="btn btn-outline-secondary clear-filters"><i class="bi bi-x-circle" aria-hidden="true"></i> Limpar filtros</button>
 <select id="ordenacaoCasos" class="form-select" aria-label="Ordenar casos">
 <option value="recentes">Mais recentes (entrada)</option>
 <option value="antigos">Mais antigos (entrada)</option>
@@ -314,6 +321,8 @@ O acesso é destinado a contas autorizadas pela instituição.
 </div>
 
 <div class="tab-pane fade" id="tab4">
+<p class="text-muted">Marque as opções aplicáveis nas colunas Tipo de violência, Sexual e Outros. É possível registrar mais de uma violência no mesmo prontuário.</p>
+<div id="violence-fields" class="violence-fields"></div>
 <div class="form-grid">
 <div class="field-group">
 <label class="form-label">Comunicação da Violência</label>

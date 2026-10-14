@@ -3,6 +3,8 @@ import { setupExports } from "./exports.js";
 import { setupImport, appendImportedDetails } from "./import-ui.js";
 import { identity, readableSnapshot } from "./import-core.js";
 import { exactProntuario, matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js";
+import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js";
+import { setupViolenceForm } from "./violence-form.js";
 import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -31,6 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let authReady = false;
   let signingIn = false;
   const caseForm = $("case-form");
+  const violenceForm = setupViolenceForm();
+  const filterIds = ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroAno", "filtroSituacao", "filtroViolencia", "filtroViolenciaSexual"];
   const caseTableBody = document.querySelector("#case-table tbody");
   const statusLabels = {
     ativo: "Ativo", suspenso: "Suspenso", encerrado_com_protecao: "Encerrado com proteção",
@@ -93,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function startNewCase() {
     editingKey = null;
     caseForm.reset();
+    violenceForm.fill({});
     $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click();
     toggleView("form");
     $("numero-prontuario").focus();
@@ -143,7 +148,8 @@ document.addEventListener("DOMContentLoaded", () => {
     encaminhamentosSolicitados: "encaminhamentos-solicitados", detalheEncaminhamento: "detalhe-encaminhamento",
     dataOficioEnc: "data-oficio-enc", retornoSolicitado: "retorno-solicitado", infoRetorno: "info-retorno",
     estudoCaso: "estudo-caso", piaElaborado: "pia-elaborado", outrasPendencias: "outras-pendencias",
-    datasTexto: "datas-atendimento", tecnicosReferencia: "tecnicos-referencia"
+    datasTexto: "datas-atendimento", tecnicosReferencia: "tecnicos-referencia",
+    tipoViolencia: "tipo-violencia", violenciaSexual: "violencia-sexual", outrasViolencias: "outras-violencias"
   };
 
   caseForm.addEventListener("submit", async (event) => {
@@ -179,7 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return matchesGeneralSearch(data, query) &&
         (!numero || exactProntuario(data.numeroProntuario, numero)) &&
         (!criad || String(data.nomeCriad || "").toLocaleLowerCase("pt-BR").includes(criad)) &&
-        matchesEntryPeriod(data, mes, ano) && (!status || data.situacaoAtual === status);
+        matchesEntryPeriod(data, mes, ano) && (!status || data.situacaoAtual === status) &&
+        matchesViolence(data, $("filtroViolencia").value, $("filtroViolenciaSexual").value);
     }), $("ordenacaoCasos").value);
   }
 
@@ -193,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const grid = document.createElement("div"); grid.className = "details-grid";
     const details = [
       ["Documento de origem", data.docOrigem], ["Origem", data.origemCaso], ["Detalhamento", data.detalheOrigem],
+      ["Tipo de violência", data.tipoViolencia], ["Sexual", data.violenciaSexual], ["Outros tipos de violência", data.outrasViolencias],
       ["Comunicação da violência", data.comunicacaoViolencia], ["Encaminhamento", data.encaminhamentosSolicitados],
       ["Retorno solicitado", data.retornoSolicitado], ["Técnicos", data.tecnicosReferencia], ["Atendimentos", data.datasTexto],
       ["Pendências", data.outrasPendencias]
@@ -211,8 +219,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     page = Math.min(page, pages);
     const counts = { ativo: 0, encerrado_com_protecao: 0, encerrado_sem_protecao: 0, suspenso: 0, nao_competencia: 0 };
-    cases.forEach(({ data }) => { if (Object.hasOwn(counts, data.situacaoAtual)) counts[data.situacaoAtual]++; });
-    $("summary-total").textContent = cases.length;
+    filtered.forEach(({ data }) => { if (Object.hasOwn(counts, data.situacaoAtual)) counts[data.situacaoAtual]++; });
+    $("summary-total").textContent = filtered.length;
     $("summary-active").textContent = counts.ativo;
     $("summary-closed").textContent = counts.encerrado_com_protecao + counts.encerrado_sem_protecao;
     $("summary-suspended").textContent = counts.suspenso;
@@ -247,6 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             input.value = value;
           });
+          violenceForm.fill(data);
           $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); toggleView("form");
         }
       });
@@ -264,9 +273,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroAno", "filtroSituacao", "ordenacaoCasos"].forEach((id) => {
+  [...filterIds, "ordenacaoCasos"].forEach((id) => {
     $(id).addEventListener("input", () => { page = 1; render(); });
   });
+  $("btnLimparFiltros").addEventListener("click", () => {
+    filterIds.forEach(id => { $(id).value = ""; });
+    $("ordenacaoCasos").value = "recentes";
+    page = 1; render();
+  });
+  function syncViolenceOptions() {
+    const options = violenceOptions(cases);
+    for (const [id, label, choices] of [
+      ["filtroViolencia", "Todos os tipos de violência", [...options.types, ['sem_informacao', 'Sem tipo informado']]],
+      ["filtroViolenciaSexual", "Todos os subtipos sexuais", options.subtypes]
+    ]) {
+      const selected = $(id).value;
+      $(id).replaceChildren(new Option(label, ""), ...choices.map(([value, label]) => new Option(label, value)));
+      $(id).value = choices.some(([value]) => value === selected) ? selected : "";
+      if (selected && !$(id).value) page = 1;
+    }
+  }
 
   setupExports({ getData: () => filteredCases().map(({ data }) => ({ ...data,
     dadosPlanilha: readableSnapshot(data.dadosPlanilha), historicoPlanilha: readableSnapshot(data.historicoPlanilha)
@@ -302,11 +328,13 @@ document.addEventListener("DOMContentLoaded", () => {
       editingKey = null;
       page = 1;
       caseForm.reset();
+      violenceForm.fill({});
       $("password").value = "";
       $("password").type = "password";
       $("show-password").checked = false;
-      ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroAno", "filtroSituacao"].forEach(id => { $(id).value = ""; });
+      filterIds.forEach(id => { $(id).value = ""; });
       $("filtroAno").replaceChildren(new Option("Todos os anos", ""));
+      syncViolenceOptions();
       $("ordenacaoCasos").value = "recentes";
       $("export-columns-dialog").close();
       caseTableBody.replaceChildren();
@@ -320,13 +348,14 @@ document.addEventListener("DOMContentLoaded", () => {
       cases = [];
       snapshot.forEach((child) => {
         const data = child.val();
-        if (data && data.numeroProntuario) cases.push({ key: child.key, data });
+        if (data && data.numeroProntuario) cases.push({ key: child.key, data: resolveViolenceData(data) });
       });
       const selectedYear = $("filtroAno").value;
       const years = availableYears(cases);
       $("filtroAno").replaceChildren(new Option("Todos os anos", ""), ...years.map(year => new Option(year, year)));
       $("filtroAno").value = years.includes(selectedYear) ? selectedYear : "";
       if (selectedYear && !years.includes(selectedYear)) page = 1;
+      syncViolenceOptions();
       render();
     }, (error) => notify(firebaseMessage(error), "danger"));
   }

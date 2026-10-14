@@ -100,6 +100,14 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
 .action-bar .input-group, .action-bar .form-select { width: 100%; max-width: none !important; min-width: 0; }
 .action-bar .filter-wide { grid-column: 1 / -1; }
 .action-bar #ordenacaoCasos { width: min(100%, 320px); }
+.clear-filters { min-height: 46px; }
+.violence-fields { display: grid; gap: 18px; margin: 0 0 24px; }
+.violence-fieldset { min-width: 0; padding: 18px; border: 1px solid var(--border-color); border-radius: 12px; }
+.violence-fieldset legend { float: none; width: auto; margin: 0 0 12px; font-size: .95rem; font-weight: 600; }
+.violence-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 8px 16px; margin-bottom: 14px; }
+.violence-choices label { display: flex; align-items: start; gap: 9px; min-height: 36px; font-size: .85rem; cursor: pointer; }
+.violence-choices input { flex-shrink: 0; margin-top: 4px; }
+.violence-fieldset > label { display: block; margin-bottom: 8px; font-size: .82rem; color: var(--text-muted); }
 .action-bar .input-group-text { background: #fff; }
 .action-bar .form-control, .action-bar .form-select { background-color: #f9fafe; }
 .export-group { display: flex; width: auto; align-self: start; gap: 7px; padding: 0; white-space: nowrap; }
