@@ -30,7 +30,9 @@ export const EXPORT_COLUMNS = [
   { key: "origemImportacao", label: "Origem da importação", group: "Importação" },
   { key: "tipoViolencia", label: "Tipo de violência", group: "Violência" },
   { key: "violenciaSexual", label: "Sexual", group: "Violência" },
-  { key: "outrasViolencias", label: "Outros tipos de violência", group: "Violência" }
+  { key: "outrasViolencias", label: "Outros tipos de violência", group: "Violência" },
+  { key: "agendaRegistrada", label: "Agenda e atendimentos registrados", group: "Atendimentos e pendências" },
+  { key: "pendenciasRegistradas", label: "Pendências e retornos registrados", group: "Atendimentos e pendências" }
 ];
 
 // Preserve the existing 13-column export unless the user changes the selection.

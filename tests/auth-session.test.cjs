@@ -29,11 +29,12 @@ const authModule = [
 ].join("\n");
 const databaseModule = [
   'const opts=window.__fixtureOptions;const stored={};',
+  'const workflowCases=opts.workflows?(opts.workflowCases||[{key:"workflow-case",data:{numeroProntuario:"0005",dataEntrada:"2026-01-01",situacaoAtual:"ativo",nomeCriad:"Pessoa fictícia",datasTexto:"Histórico fictício com data incompleta: 01/02",outrasPendencias:"Anotação fictícia preservada",tecnicosReferencia:"Equipe fictícia"}}]):null;',
   'export const get=async p=>({val:()=>({active:true,canWrite:!opts.readOnly}),forEach:fn=>[...(opts.existing||[]),...Object.values(stored)].forEach(v=>fn({val:()=>v}))});',
-  'export const runTransaction=async(p,fn)=>{const d=window.__authTest;d.importAttempts=(d.importAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(opts.failImportAt===d.importAttempts)throw new Error("fixture");const value=fn(stored[p]??null);if(value===undefined)return {committed:false};stored[p]=value;d.imported=Object.values(stored);return {committed:true};};',
+  'export const runTransaction=async(p,fn)=>{const d=window.__authTest;if(workflowCases){d.workflowAttempts=(d.workflowAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(d.failWorkflow){d.failWorkflow=false;throw {code:"PERMISSION_DENIED"};}const [,caseKey,field]=p.split("/");const row=workflowCases.find(c=>c.key===caseKey);if(!row)throw {code:"PERMISSION_DENIED"};if(d.forceConflict&&row.data[field]){const next=JSON.parse(row.data[field]);next.revisao++;next.observacao="Atualizado por outra pessoa fictícia";row.data[field]=JSON.stringify(next);d.forceConflict=false;d.emitCases();}const value=fn(row.data[field]??null);if(value===undefined)return {committed:false};row.data[field]=value;d.workflowWrites=(d.workflowWrites||0)+1;d.emitCases();return {committed:true};}d.importAttempts=(d.importAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(opts.failImportAt===d.importAttempts)throw new Error("fixture");const value=fn(stored[p]??null);if(value===undefined)return {committed:false};stored[p]=value;d.imported=Object.values(stored);return {committed:true};};',
   'export const getDatabase=()=>({});export const ref=(_db,p)=>p;',
   'export const push=async()=>{window.__authTest.writes=(window.__authTest.writes||0)+1;};export const update=async()=>{window.__authTest.writes=(window.__authTest.writes||0)+1;};',
-  'export const onValue=(p,cb)=>{const d=window.__authTest;d.subscriptions++;d.emitCases=()=>cb({forEach:fn=>fn({key:"fake-key",val:()=>({numeroProntuario:"CASE-01",dataEntrada:"2026-10-14",situacaoAtual:"ativo",nomeCriad:"DADO-FICTICIO",detalheOrigem:"DETALHE-FICTICIO"})})});d.emitCases();return()=>{d.unsubscribed++;};};'
+  'export const onValue=(p,cb)=>{const d=window.__authTest;d.subscriptions++;d.workflowCases=workflowCases;d.setReadOnly=v=>{opts.readOnly=v;};d.emitCases=()=>cb({forEach:fn=>workflowCases?workflowCases.forEach(c=>fn({key:c.key,val:()=>c.data})):fn({key:"fake-key",val:()=>({numeroProntuario:"CASE-01",dataEntrada:"2026-10-14",situacaoAtual:"ativo",nomeCriad:"DADO-FICTICIO",detalheOrigem:"DETALHE-FICTICIO"})})});d.emitCases();return()=>{d.unsubscribed++;};};'
 ].join("\n");
 
 async function fixture(options = {}) {
@@ -256,6 +257,115 @@ test('500-row preview fits mobile and desktop without overflowing the page',asyn
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       if(process.env.PROTEJA_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.PROTEJA_SCREENSHOT_DIR,`import-${width}.png`)});
     }
+  }finally{await context.close();}
+});
+
+async function workflowLogin(page, readOnly=false) {
+  await ready(page);await credentials(page);await page.locator('#btnLogin').click();
+  await page.waitForFunction(()=>window.__authTest.workflowCases?.length===1);
+  if(!readOnly)await page.waitForFunction(()=>!document.getElementById('agenda-new').disabled);
+}
+async function newAppointment(page) {
+  await page.locator('#nav-agenda').click();await page.locator('#agenda-new').click();
+  await page.locator('#workflow-case').selectOption('workflow-case');
+  await page.locator('#workflow-owner').fill('Técnico fictício');
+  await page.locator('#workflow-date').fill('2026-10-14');await page.locator('#workflow-time').fill('09:00');
+}
+async function workflowSaved(page) {await page.waitForFunction(()=>!document.getElementById('workflow-dialog').open);}
+test('agenda saves independent dated records, prevents duplicate submission and preserves legacy text',async()=>{
+  const {page,context}=await fixture({workflows:true,writeDelay:200});
+  try {
+    await workflowLogin(page);await page.locator('#nav-agenda').click();await page.locator('#agenda-case').selectOption('workflow-case');
+    assert.match(await page.locator('#agenda-legacy').textContent(),/01\/02/);
+    await newAppointment(page);await page.locator('#workflow-notes').fill('<img src=x onerror=alert(1)> Nota fictícia');
+    await page.locator('#workflow-save').click();await page.evaluate(()=>document.getElementById('workflow-save').click());await workflowSaved(page);
+    assert.equal(await page.evaluate(()=>window.__authTest.workflowWrites),1);
+    assert.equal(await page.locator('#agenda-rows tr').count(),1);
+    assert.match(await page.locator('#agenda-rows').textContent(),/14\/10\/2026 às 09:00/);
+    assert.equal(await page.locator('#agenda-rows img').count(),0);
+    const data=await page.evaluate(()=>window.__authTest.workflowCases[0].data);
+    assert.equal(data.datasTexto,'Histórico fictício com data incompleta: 01/02');
+    assert.equal(data.outrasPendencias,'Anotação fictícia preservada');
+    const field=Object.keys(data).find(k=>k.startsWith('agenda_'));assert.equal(typeof data[field],'string');
+    await page.locator('#agenda-rows .btn').click();await page.locator('#workflow-status').selectOption('realizado');
+    await page.locator('#workflow-save').click();assert.equal(await page.locator('#workflow-dialog').isVisible(),true);
+    await page.locator('#workflow-completed').fill('2026-10-15');await page.locator('#workflow-save').click();await workflowSaved(page);
+    const saved=await page.evaluate(field=>JSON.parse(window.__authTest.workflowCases[0].data[field]),field);
+    assert.equal(saved.revisao,2);assert.equal(saved.data,'2026-10-14');assert.equal(saved.dataConclusao,'2026-10-15');
+  }finally{await context.close();}
+});
+test('tasks support deadlines, manual priority, completion and exact-case filters',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('#nav-tasks').click();await page.locator('#tarefas-new').click();
+    await page.locator('#workflow-case').selectOption('workflow-case');await page.locator('#workflow-owner').fill('Equipe fictícia');
+    await page.locator('#workflow-description').fill('Conferir documento fictício');await page.locator('#workflow-date').fill('2000-01-01');
+    await page.locator('#workflow-priority').selectOption('alta');await page.locator('#workflow-save').click();await workflowSaved(page);
+    assert.match(await page.locator('#tarefas-rows').textContent(),/Prazo vencido/);
+    await page.locator('#tarefas-numero').fill('05');assert.equal(await page.locator('#tarefas-rows tr').count(),1);
+    await page.locator('#tarefas-owner').fill('inexistente');assert.equal(await page.locator('#tarefas-rows tr').count(),0);
+    await page.locator('#tarefas-clear').click();await page.locator('#tarefas-rows .btn').click();
+    await page.locator('#workflow-status').selectOption('concluida');await page.locator('#workflow-completed').fill('2026-10-14');
+    await page.locator('#workflow-save').click();await workflowSaved(page);
+    assert.doesNotMatch(await page.locator('#tarefas-rows').textContent(),/Prazo vencido/);
+    assert.match(await page.locator('#tarefas-rows').textContent(),/Concluída em 14\/10\/2026/);
+  }finally{await context.close();}
+});
+test('concurrent changes reject stale edits without overwriting newer content',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await newAppointment(page);await page.locator('#workflow-save').click();await workflowSaved(page);
+    await page.locator('#agenda-rows .btn').click();await page.locator('#workflow-notes').fill('Edição local fictícia');
+    await page.evaluate(()=>{window.__authTest.forceConflict=true;});await page.locator('#workflow-save').click();
+    await page.waitForFunction(()=>document.getElementById('workflow-error').textContent.includes('mudou'));
+    assert.equal(await page.evaluate(()=>window.__authTest.workflowWrites),1);
+    assert.equal(await page.locator('#workflow-notes').inputValue(),'Edição local fictícia');
+    const current=await page.evaluate(()=>JSON.parse(Object.entries(window.__authTest.workflowCases[0].data).find(([k])=>k.startsWith('agenda_'))[1]));
+    assert.equal(current.observacao,'Atualizado por outra pessoa fictícia');
+    page.once('dialog',d=>d.accept());await page.locator('#workflow-cancel').click();await workflowSaved(page);
+  }finally{await context.close();}
+});
+test('write failure preserves the draft for retry under the same item key',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await newAppointment(page);await page.evaluate(()=>{window.__authTest.failWorkflow=true;});
+    await page.locator('#workflow-save').click();await page.waitForFunction(()=>document.getElementById('workflow-error').textContent.includes('Não foi possível'));
+    assert.equal(await page.locator('#workflow-date').inputValue(),'2026-10-14');
+    await page.locator('#workflow-save').click();await workflowSaved(page);
+    assert.equal(await page.evaluate(()=>Object.keys(window.__authTest.workflowCases[0].data).filter(k=>k.startsWith('agenda_')).length),1);
+  }finally{await context.close();}
+});
+test('read-only access and permission revocation block new workflow writes',async()=>{
+  const first=await fixture({workflows:true,readOnly:true});
+  try {await workflowLogin(first.page,true);await first.page.locator('#nav-agenda').click();assert.equal(await first.page.locator('#agenda-new').isDisabled(),true);}finally{await first.context.close();}
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await newAppointment(page);await page.evaluate(()=>window.__authTest.setReadOnly(true));
+    await page.locator('#workflow-save').click();await page.waitForFunction(()=>document.getElementById('workflow-error').textContent.includes('não tem permissão'));
+    assert.equal(await page.evaluate(()=>window.__authTest.workflowAttempts||0),0);
+    assert.equal(await page.locator('#workflow-save').isDisabled(),true);
+  }finally{await context.close();}
+});
+test('sign-out clears workflow forms and prevents a pending transaction from writing',async()=>{
+  const {page,context}=await fixture({workflows:true,writeDelay:300});
+  try {
+    await workflowLogin(page);await newAppointment(page);await page.locator('#workflow-save').click();
+    await page.waitForFunction(()=>window.__authTest.workflowAttempts===1);
+    await page.evaluate(()=>document.getElementById('btnLogout').click());await page.waitForFunction(()=>document.getElementById('app-wrapper').hidden);
+    await page.waitForTimeout(400);
+    assert.equal(await page.locator('#workflow-dialog').isVisible(),false);assert.equal(await page.locator('#workflow-owner').inputValue(),'');
+    assert.equal(await page.locator('#agenda-rows tr').count(),0);assert.equal(await page.evaluate(()=>window.__authTest.workflowWrites||0),0);
+  }finally{await context.close();}
+});
+test('new navigation protects unsaved case edits and reduced motion disables count animation',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await page.emulateMedia({reducedMotion:'reduce'});await workflowLogin(page);await page.locator('.btnEditar').click();
+    await page.locator('#detalhe-origem').fill('Alteração fictícia não salva');page.once('dialog',d=>d.dismiss());
+    await page.locator('#nav-agenda').click();assert.equal(await page.locator('#form-section').isVisible(),true);
+    assert.equal(await page.locator('#detalhe-origem').inputValue(),'Alteração fictícia não salva');
+    page.once('dialog',d=>d.accept());await page.locator('#nav-list').click();await page.locator('#filtroProntuario').fill('inexistente');
+    assert.equal(await page.evaluate(()=>document.getElementById('summary-total').getAnimations().length),0);
   }finally{await context.close();}
 });
 

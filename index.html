@@ -73,6 +73,8 @@ O acesso é destinado a contas autorizadas pela instituição.
 <i class="bi bi-person-plus"></i> Registrar Novo Caso
 </a>
 </li>
+<li><a href="#" id="nav-agenda"><i class="bi bi-calendar-week" aria-hidden="true"></i> Agenda e atendimentos</a></li>
+<li><a href="#" id="nav-tasks"><i class="bi bi-list-check" aria-hidden="true"></i> Pendências e retornos</a></li>
 </ul>
 </div>
 
@@ -182,6 +184,9 @@ O acesso é destinado a contas autorizadas pela instituição.
 <nav id="pagination" class="mt-4"></nav>
 </div>
 </section>
+
+<section id="agenda-section" hidden></section>
+<section id="tasks-section" hidden></section>
 
 <dialog id="import-dialog" class="export-dialog import-dialog" aria-labelledby="import-title">
 <div class="export-dialog-header"><div><h3 id="import-title">Importar planilha otimizada</h3><p>Selecione o arquivo .xlsx. Cadastros e históricos serão vinculados por prontuário. Casos existentes serão ignorados.</p></div></div>
@@ -402,13 +407,14 @@ O acesso é destinado a contas autorizadas pela instituição.
 
 <div class="tab-pane fade" id="tab8">
 <div class="form-grid">
+<div class="field-group full-width"><p>Registre cada atendimento ou pendência separadamente, com data escolhida no calendário. Salve o prontuário antes de adicionar esses itens.</p><div class="workflow-case-actions"><button id="btnCaseAgenda" type="button" class="btn btn-outline-primary" disabled>Agenda deste prontuário</button><button id="btnCaseTasks" type="button" class="btn btn-outline-primary" disabled>Pendências deste prontuário</button></div></div>
 <div class="field-group">
 <label class="form-label">Técnicos de referência</label>
 <input type="text" id="tecnicos-referencia" class="form-control" />
 </div>
 <div class="field-group">
-<label class="form-label">Datas de atendimentos</label>
-<textarea id="datas-atendimento" class="form-control" placeholder="Ex: 12/01/2024, 15/03/2024" rows="1"></textarea>
+<label class="form-label">Histórico anterior de datas e relatos</label>
+<textarea id="datas-atendimento" class="form-control" placeholder="Anotações anteriores preservadas. Use Agenda e atendimentos para novos registros com data." rows="3"></textarea>
 </div>
 <div class="field-group full-width">
 <label class="form-label">Outras pendências</label>
