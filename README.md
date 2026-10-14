@@ -23,7 +23,7 @@ Configure regras do Realtime Database para exigir autenticação e limitar o ace
 - Busca por prontuário, CRIAD, responsável, técnicos e atendimentos; filtros por mês de entrada e situação.
 - Contadores, ordenação por data de entrada, paginação e visualização de detalhes.
 - Exportação dos resultados filtrados para CSV, Excel e PDF. O botão **Colunas** permite selecionar qualquer campo do cadastro e as datas de criação/atualização. Inclui marcar todas, limpar e restaurar as 13 colunas padrão. A seleção aplicada vale para os três formatos até recarregar a página; cancelar ou pressionar Escape preserva a seleção anterior.
-- O PDF distribui relatórios com muitas colunas em páginas adicionais e repete o prontuário quando selecionado. Registros antigos sem um campo preenchido deixam essa célula vazia.
+- O PDF usa títulos menores, margens compactas e larguras ajustadas por campo e conteúdo: prontuário, datas, cor e respostas curtas ocupam menos espaço. As colunas selecionadas são ajustadas para caber juntas sempre que suas larguras mínimas permitirem; seleções maiores continuam em páginas adicionais, repetindo o prontuário quando selecionado. Registros antigos sem um campo preenchido deixam essa célula vazia. A quantidade de linhas também pode exigir páginas adicionais.
 
 ## Validação
 
