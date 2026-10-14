@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { setupExports } from "./exports.js";
 import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBNQqq67cuuDetOJZR2EcCkH4JNXOxNW3Y",
@@ -23,8 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const $ = (id) => document.getElementById(id);
   const authWrapper = $("auth-wrapper");
   const appWrapper = $("app-wrapper");
-  const loginSection = $("login-section");
-  const registerSection = $("register-section");
+  const loginButton = $("btnLogin");
+  const authStatus = $("auth-status");
+  let authReady = false;
+  let signingIn = false;
   const caseForm = $("case-form");
   const caseTableBody = document.querySelector("#case-table tbody");
   const statusLabels = {
@@ -63,6 +65,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "auth/invalid-email": "Informe um e-mail válido.",
       "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
       "auth/invalid-credential": "E-mail ou senha incorretos.",
+      "auth/user-not-found": "E-mail ou senha incorretos.",
+      "auth/wrong-password": "E-mail ou senha incorretos.",
       "auth/too-many-requests": "Muitas tentativas. Aguarde um pouco e tente novamente.",
       "auth/network-request-failed": "Sem conexão. Confira sua internet e tente novamente.",
       "PERMISSION_DENIED": "Seu usuário não tem permissão para acessar estes registros."
@@ -95,39 +99,33 @@ document.addEventListener("DOMContentLoaded", () => {
   $("nav-new").addEventListener("click", (event) => { event.preventDefault(); startNewCase(); });
   $("btnEmptyNew").addEventListener("click", startNewCase);
   $("btnCancelarForm").addEventListener("click", () => toggleView("list"));
-  $("link-register").addEventListener("click", (event) => {
-    event.preventDefault(); loginSection.hidden = true; registerSection.hidden = false; $("email-numero").focus();
-  });
-  $("link-login").addEventListener("click", (event) => {
-    event.preventDefault(); registerSection.hidden = true; loginSection.hidden = false; $("username").focus();
-  });
   $("show-password").addEventListener("change", (event) => { $("password").type = event.target.checked ? "text" : "password"; });
 
   $("login-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!authReady || signingIn) return;
+    signingIn = true;
     const button = event.currentTarget.querySelector('[type="submit"]');
     setBusy(button, true, "Acessando...");
+    authStatus.textContent = "Verificando suas credenciais...";
+    const slowLogin = window.setTimeout(() => {
+      authStatus.textContent = "A conexão está demorando. Aguarde a resposta do servidor.";
+    }, 8000);
     try {
       await signInWithEmailAndPassword(auth, $("username").value.trim(), $("password").value);
+      $("password").value = "";
+      authStatus.textContent = "";
       notify("Acesso realizado com sucesso.", "success");
-    } catch (error) { notify(firebaseMessage(error), "danger"); }
-    finally { setBusy(button, false); }
+    } catch (error) {
+      authStatus.textContent = firebaseMessage(error);
+      notify(firebaseMessage(error), "danger");
+    } finally {
+      window.clearTimeout(slowLogin);
+      signingIn = false;
+      setBusy(button, false);
+    }
   });
 
-  $("register-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const password = $("senha").value;
-    if (password !== $("confirmar-senha").value) {
-      notify("As senhas não coincidem.", "warning"); $("confirmar-senha").focus(); return;
-    }
-    const button = event.currentTarget.querySelector('[type="submit"]');
-    setBusy(button, true, "Criando conta...");
-    try {
-      await createUserWithEmailAndPassword(auth, $("email-numero").value.trim(), password);
-      notify("Conta criada com sucesso.", "success");
-    } catch (error) { notify(firebaseMessage(error), "danger"); }
-    finally { setBusy(button, false); }
-  });
 
   $("btnLogout").addEventListener("click", async () => {
     try { await signOut(auth); notify("Você saiu do sistema."); }
@@ -147,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   caseForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!auth.currentUser) { notify("Entre novamente para salvar um caso.", "warning"); return; }
     if (!caseForm.reportValidity()) return;
     const button = $("btnSalvarCaso");
     const fullData = Object.fromEntries(Object.entries(fieldMap).map(([key, id]) => [key, $(id).value.trim()]));
@@ -257,11 +256,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupExports({ getData: () => filteredCases().map(({ data }) => data), notify });
 
-  onAuthStateChanged(auth, (user) => {
+  function handleAuthState(user) {
     if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
     authWrapper.hidden = Boolean(user); appWrapper.hidden = !user;
-    if (!user) { cases = []; $("export-columns-dialog").close(); caseTableBody.replaceChildren(); return; }
+    if (!user) {
+      cases = [];
+      editingKey = null;
+      page = 1;
+      caseForm.reset();
+      $("password").value = "";
+      $("password").type = "password";
+      $("show-password").checked = false;
+      ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao"].forEach(id => { $(id).value = ""; });
+      $("export-columns-dialog").close();
+      caseTableBody.replaceChildren();
+      ["summary-total", "summary-active", "summary-filtered"].forEach(id => { $(id).textContent = "0"; });
+      toggleView("list");
+      return;
+    }
+    authStatus.textContent = "";
     unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
+      if (auth.currentUser?.uid !== user.uid) return;
       cases = [];
       snapshot.forEach((child) => {
         const data = child.val();
@@ -269,6 +284,26 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       render();
     }, (error) => notify(firebaseMessage(error), "danger"));
-  });
+  }
+
+  async function initializeSession() {
+    try {
+      // Clear any legacy persisted session before exposing a restored user.
+      await setPersistence(auth, inMemoryPersistence);
+      await signOut(auth);
+      onAuthStateChanged(auth, handleAuthState, () => {
+        authStatus.textContent = "Não foi possível verificar sua sessão. Recarregue a página.";
+      });
+      authReady = true;
+      document.documentElement.dataset.authReady = "true";
+      loginButton.disabled = false;
+      loginButton.textContent = "Acessar sistema";
+      authStatus.textContent = "";
+    } catch {
+      authStatus.textContent = "Não foi possível preparar o acesso. Confira a conexão e recarregue a página.";
+      $("btnReloadAuth").hidden = false;
+    }
+  }
+  initializeSession();
 });
 

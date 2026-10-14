@@ -4,9 +4,9 @@ Aplicação web estática para cadastro e acompanhamento de prontuários. A inte
 
 ## Executar
 
-Abra `index.html` por um servidor web local ou publique os arquivos estáticos em um host HTTPS. O projeto não tem etapa de compilação nem gerenciador de pacotes: Firebase, Bootstrap, ícones e bibliotecas de exportação são carregados por CDN.
+Abra `index.html` por um servidor web local ou publique os arquivos estáticos em um host HTTPS. O site não exige compilação: Firebase, Bootstrap, ícones e bibliotecas de exportação são carregados por CDN. O package.json e o pnpm-lock.yaml são usados apenas nos testes de desenvolvimento.
 
-Para autenticação e persistência funcionarem, o projeto Firebase configurado em `script.js` precisa estar ativo. Cadastros criados pela tela de registro são contas Firebase Auth; controle quem pode criar usuários pelas configurações do Firebase Authentication.
+Para autenticação e persistência dos casos funcionarem, o projeto Firebase configurado em `script.js` precisa estar ativo. As contas devem ser provisionadas pela administração no Firebase; não há cadastro público na interface. O login usa sessão apenas em memória: abrir/recarregar a página exige autenticar novamente, inclusive para eliminar sessões persistentes da versão antiga. A preferência de tema continua salva.
 
 ## Dados
 
@@ -18,7 +18,7 @@ Configure regras do Realtime Database para exigir autenticação e limitar o ace
 
 - Barra lateral branca no modo claro e logo transparente no modo noturno. O botão de aparência está disponível no login e no menu; a preferência fica salva neste navegador, independentemente do acesso ao Firebase.
 
-- Login, cadastro e saída pelo Firebase Authentication.
+- Login e saída pelo Firebase Authentication, com sessão não persistente e inicialização explícita.
 - Cadastro e edição dos oito grupos de informações existentes.
 - Busca por prontuário, CRIAD, responsável, técnicos e atendimentos; filtros por mês de entrada e situação.
 - Contadores, ordenação por data de entrada, paginação e visualização de detalhes.
@@ -27,5 +27,13 @@ Configure regras do Realtime Database para exigir autenticação e limitar o ace
 
 ## Validação
 
-Não há testes automatizados ou configuração de build neste repositório. A validação desta alteração usa verificação de sintaxe JavaScript e revisão dos identificadores/eventos entre HTML e script. O teste funcional completo depende das credenciais e regras configuradas no projeto Firebase.
+Há sete testes automatizados de login em tests/auth-session.test.cjs. Instale as dependências com `pnpm install --frozen-lockfile`, instale o navegador de teste com `pnpm exec playwright install chromium` e execute `pnpm test`. Opcionalmente, PROTEJA_BROWSER_PATH pode indicar um navegador Chromium/Edge já instalado.
+
+Os testes simulam todos os serviços externos e verificam inicialização, limpeza de sessão antiga, login explícito, recarregamento, conexão lenta, erro de credenciais, saída e falha de carregamento. Eles não comprovam a segurança das regras publicadas no Firebase. Não há build do site.
+
+## Segurança e apresentação comercial
+
+Consulte os [critérios de segurança](docs/SECURITY-REVIEW.md) e o [caminho de comercialização](docs/COMMERCIAL-READINESS.md). As regras devem ser homologadas no console Firebase antes do uso com dados reais: incorporar este PR não modifica as regras do banco.
+
+database.rules.lockdown.json fecha o acesso de todos os clientes sem excluir registros. database.rules.example.json propõe acesso por UID para homologação e retomada controlada. Nenhum desses arquivos é implantado automaticamente. Compare os dados legados, demais caminhos e UIDs antes de liberar o acesso.
 
