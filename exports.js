@@ -30,6 +30,50 @@ export const EXPORT_COLUMNS = [
 // Preserve the existing 13-column export unless the user changes the selection.
 export const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.slice(0, 13).map(column => column.key);
 
+// Width bounds are PDF-only, in points. Dates, IDs and short answers need less
+// space than names or narratives; CSV/XLS keep the original labels and values.
+const PDF_WIDTHS = {
+  numeroProntuario: [42, 62], dataEntrada: [46, 48], docOrigem: [50, 85],
+  origemCaso: [55, 90], cor: [28, 44], situacaoAtual: [45, 76],
+  nomeCriad: [60, 100], responsavelNome: [60, 100], responsavelCpf: [60, 66],
+  comunicacaoViolencia: [50, 80], encaminhamentosSolicitados: [55, 88],
+  datasTexto: [52, 88], tecnicosReferencia: [52, 94],
+  retornoSolicitado: [32, 40], estudoCaso: [32, 40], piaElaborado: [32, 40],
+  oficioViolencia: [50, 85], dataOficioEnc: [55, 88],
+  criadoEm: [52, 80], atualizadoEm: [52, 80]
+};
+
+export function pdfColumnStyles(doc, columns, data) {
+  const available = doc.internal.pageSize.getWidth() - 49;
+  const widths = columns.map(column => {
+    const [minimum, max] = PDF_WIDTHS[column.key] || [64, 130];
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.6);
+    const titleWidth = Math.max(...column.label.split(/\s+/).map(word => doc.getTextWidth(word))) + 6;
+    const min = Math.max(minimum, Math.min(titleWidth, max));
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.4);
+    let width = min;
+    for (const record of data) {
+      // Stop measuring once this column has reached its useful maximum.
+      if (width >= max) break;
+      const lines = String(record[column.key] ?? "").slice(0, 250).split(/\r?\n/);
+      width = Math.min(max, Math.max(width, ...lines.map(line => doc.getTextWidth(line) + 6)));
+    }
+    return { key: column.key, min, width };
+  });
+  const minimum = widths.reduce((sum, column) => sum + column.min, 0);
+  const preferred = widths.reduce((sum, column) => sum + column.width, 0);
+  // Fit the selected columns when possible, reducing only spare width above
+  // the readable minimum. Wider selections still use horizontal page breaks.
+  const ratio = preferred > available && minimum <= available
+    ? (available - minimum) / (preferred - minimum)
+    : 1;
+  return Object.fromEntries(widths.map(column => [
+    column.key, { cellWidth: column.min + (column.width - column.min) * ratio }
+  ]));
+}
+
 function spreadsheetValue(value) {
   const text = String(value ?? "");
   return /^[\s]*[=+@\-]/.test(text) ? "'" + text : text;
@@ -134,20 +178,27 @@ export function setupExports({ getData, notify }) {
       const doc = new window.jspdf.jsPDF("l", "pt", "a4");
       if (typeof doc.autoTable !== "function") { notify("A exportação PDF está indisponível no momento.", "warning"); return; }
       const body = data.map(record => Object.fromEntries(columns.map(column => [column.key, String(record[column.key] ?? "")])));
+      const columnStyles = pdfColumnStyles(doc, columns, data);
       doc.autoTable({
         columns: columns.map(column => ({ header: column.label, dataKey: column.key })),
         body,
         startY: 64,
-        margin: { top: 64, right: 40, bottom: 40, left: 40 },
-        styles: { fontSize: 8, cellWidth: 100, overflow: "linebreak" },
-        headStyles: { fillColor: [70, 88, 217] },
+        margin: { top: 64, right: 24, bottom: 32, left: 24 },
+        tableWidth: "wrap",
+        columnStyles,
+        styles: { fontSize: 7.4, cellPadding: 3, overflow: "linebreak", valign: "top" },
+        headStyles: { fontSize: 6.6, cellPadding: { top: 4, right: 3, bottom: 4, left: 3 }, fillColor: [70, 88, 217] },
+        // AutoTable 3.x otherwise applies columnStyles only to body cells.
+        didParseCell: ({ cell, column }) => { cell.styles.cellWidth = columnStyles[column.dataKey].cellWidth; },
         horizontalPageBreak: true,
         horizontalPageBreakRepeat: selectedKeys.has("numeroProntuario") ? "numeroProntuario" : undefined,
         didDrawPage: () => {
           doc.setFontSize(13);
-          doc.text("Relatório de casos - PROTEJA", 40, 30);
+          doc.text("Relatório de casos - PROTEJA", 24, 30);
           doc.setFontSize(9);
-          doc.text(data.length + " casos | " + columns.length + " colunas", 40, 46);
+          doc.text(data.length + " casos | " + columns.length + " colunas", 24, 46);
+          doc.setFontSize(7);
+          doc.text("Página " + doc.internal.getCurrentPageInfo().pageNumber, doc.internal.pageSize.getWidth() - 24, doc.internal.pageSize.getHeight() - 14, { align: "right" });
         }
       });
       doc.save("proteja_casos.pdf");
