@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { exactProntuario, matchesGeneralSearch, sortCases } from '../case-list.js';
+import { exactProntuario, matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from '../case-list.js';
 const row = (number, date = '2026-01-01') => ({ key: String(number), data: { numeroProntuario: String(number), dataEntrada: date } });
 const numbers = cases => cases.map(c => c.data.numeroProntuario);
 test('exact numeric search equates leading zeros without matching substrings', () => {
@@ -33,4 +33,23 @@ test('sorts oldest/newest entry and keeps missing or invalid dates last', () => 
 });
 test('uses natural number order to resolve ties in entry dates', () => {
   assert.deepEqual(numbers(sortCases([row(10),row(2),row(1)])), ['1','2','10']);
+});
+test('year options use all valid entry dates, deduplicated and newest first', () => {
+  assert.deepEqual(availableYears([row(1,'2024-01-01'),row(2,'2026-01-01'),row(3,'2025-01-01'),row(4,'2024-02-01'),row(5,''),row(6,'2027-02-30')]),['2026','2025','2024']);
+  assert.deepEqual(availableYears([]),[]);
+});
+test('month and year combine independently without timezone conversion', () => {
+  const data={dataEntrada:'2025-01-01'};
+  assert.equal(matchesEntryPeriod(data,'1','2025'),true);
+  assert.equal(matchesEntryPeriod(data,'1','2024'),false);
+  assert.equal(matchesEntryPeriod(data,'2','2025'),false);
+  assert.equal(matchesEntryPeriod(data,'','2025'),true);
+  assert.equal(matchesEntryPeriod(data,'1',''),true);
+});
+test('records without a valid date remain available only without a period filter', () => {
+  for (const dataEntrada of ['',undefined,'2026-02-30']) {
+    assert.equal(matchesEntryPeriod({dataEntrada}),true);
+    assert.equal(matchesEntryPeriod({dataEntrada},'','2026'),false);
+    assert.equal(matchesEntryPeriod({dataEntrada},'1',''),false);
+  }
 });

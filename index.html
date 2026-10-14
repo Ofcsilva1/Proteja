@@ -123,9 +123,12 @@ O acesso é destinado a contas autorizadas pela instituição.
 <span class="input-group-text"><i class="bi bi-building"></i></span>
 <input type="text" id="filtroCriad" class="form-control" placeholder="Nome CRIAD" />
 </div>
-<select id="filtroMes" class="form-select" style="max-width: 180px;">
+<select id="filtroMes" class="form-select" style="max-width: 180px;" aria-label="Filtrar por mês de entrada">
 <option value="">Todos os meses</option>
 <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+</select>
+<select id="filtroAno" class="form-select" aria-label="Filtrar por ano de entrada">
+<option value="">Todos os anos</option>
 </select>
 <select id="filtroSituacao" class="form-select filter-status" aria-label="Filtrar por situação">
 <option value="">Todas as situações</option><option value="ativo">Ativo</option><option value="suspenso">Suspenso</option><option value="encerrado_com_protecao">Encerrado com proteção</option><option value="encerrado_sem_protecao">Encerrado sem proteção</option><option value="nao_competencia">Não é competência</option>
