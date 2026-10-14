@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { setupExports } from "./exports.js";
-import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+import { setupImport, appendImportedDetails } from "./import-ui.js";
+import { identity, readableSnapshot } from "./import-core.js";
+import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -150,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const button = $("btnSalvarCaso");
     const fullData = Object.fromEntries(Object.entries(fieldMap).map(([key, id]) => [key, $(id).value.trim()]));
     fullData.atualizadoEm = new Date().toISOString();
+    if (!fullData.situacaoAtual) delete fullData.situacaoAtual;
     setBusy(button, true);
     try {
       if (editingKey) await update(ref(database, `casos/${editingKey}`), fullData);
@@ -200,6 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const item = document.createElement("div"); const strong = document.createElement("strong");
       strong.textContent = `${label}: `; item.append(strong, document.createTextNode(value)); grid.append(item);
     });
+    appendImportedDetails(grid, data);
     cell.append(grid); detailRow.append(cell); row.after(detailRow);
   }
 
@@ -232,7 +236,15 @@ document.addEventListener("DOMContentLoaded", () => {
           if (next?.classList.contains("details-row")) next.remove(); else renderDetails(row, data);
         } else if (button.classList.contains("btnEditar")) {
           editingKey = key;
-          Object.entries(fieldMap).forEach(([field, id]) => { $(id).value = data[field] || ""; });
+          Object.entries(fieldMap).forEach(([field, id]) => {
+            const input = $(id);
+            input.querySelectorAll?.('[data-import-option]').forEach(option => option.remove());
+            const value = data[field] || "";
+            if (input.tagName === "SELECT" && !Array.from(input.options).some(option => option.value === value)) {
+              const option = new Option(value || "Não informado", value); option.dataset.importOption = "true"; input.add(option);
+            }
+            input.value = value;
+          });
           $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); toggleView("form");
         }
       });
@@ -254,12 +266,36 @@ document.addEventListener("DOMContentLoaded", () => {
     $(id).addEventListener("input", () => { page = 1; render(); });
   });
 
-  setupExports({ getData: () => filteredCases().map(({ data }) => data), notify });
+  setupExports({ getData: () => filteredCases().map(({ data }) => ({ ...data,
+    dadosPlanilha: readableSnapshot(data.dadosPlanilha), historicoPlanilha: readableSnapshot(data.historicoPlanilha)
+  })), notify });
+  const importer = setupImport({
+    getUser: () => auth.currentUser,
+    getPermission: async uid => {
+      if (auth.currentUser?.uid !== uid) return false;
+      const access = (await get(ref(database, `access/${uid}`))).val();
+      return auth.currentUser?.uid === uid && access?.active === true && access?.canWrite === true;
+    },
+    getExisting: async () => {
+      const snapshot = await get(ref(database, "casos"));
+      const records = []; snapshot.forEach(child => records.push(child.val())); return records;
+    },
+    createCase: async (data, uid) => {
+      const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity(data.numeroProntuario)));
+      const key = 'import_' + Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, '0')).join('');
+      if (auth.currentUser?.uid !== uid) throw new Error("Sessão encerrada");
+      const timestamp = new Date().toISOString();
+      const record = { ...data, criadoEm: timestamp, atualizadoEm: timestamp };
+      const result = await runTransaction(ref(database, `casos/${key}`), current => current === null ? record : undefined, { applyLocally: false });
+      return result.committed;
+    }
+  });
 
   function handleAuthState(user) {
     if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
     authWrapper.hidden = Boolean(user); appWrapper.hidden = !user;
     if (!user) {
+      importer.reset();
       cases = [];
       editingKey = null;
       page = 1;

@@ -358,3 +358,26 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
   .export-dialog-footer .btn { flex: 1; }
 }
 
+/* Spreadsheet preview shares the existing dialog, typography and theme tokens. */
+.import-dialog { width: min(1120px, calc(100vw - 24px)); max-width: 1120px; padding: 20px; overflow: auto; }
+.import-dialog[open] { display: flex; flex-direction: column; }
+.import-dialog > * { flex-shrink: 0; }
+.import-dialog .export-dialog-header { padding: 0 0 16px; }
+.import-dialog .export-dialog-footer { padding: 16px 0 0; }
+.import-dialog #import-status { margin: 10px 0; }
+.import-dialog #import-summary { margin: 0; font-weight: 600; }
+.import-dialog > .form-control { margin-bottom: 16px; }
+.import-table-wrap { max-height: 45vh; min-height: 100px; flex: 1 1 auto; overflow: auto; margin: 16px 0; }
+.import-table-wrap table { min-width: 740px; }
+.import-table-wrap th { position: sticky; top: 0; background: var(--card-bg, #fff); }
+.import-table-wrap td { vertical-align: top; }
+.import-table-wrap input[type="text"] { min-width: 120px; }
+.import-table-wrap input[type="date"] { min-width: 145px; }
+.import-table-wrap select { min-width: 170px; }
+.import-error { color: #b42318; }
+.import-confirm { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 18px; }
+.import-confirm input { margin-top: 4px; flex-shrink: 0; }
+.import-original { margin: 16px 0; overflow-wrap: anywhere; }
+.import-original dd { white-space: pre-wrap; }
+.details-grid > details { grid-column: 1 / -1; }
+[data-theme="dark"] .import-error { color: #ffb4ab; }
