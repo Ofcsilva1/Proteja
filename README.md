@@ -21,6 +21,7 @@ Configure regras do Realtime Database para exigir autenticação e limitar o ace
 - Login e saída pelo Firebase Authentication, com sessão não persistente e inicialização explícita.
 - Cadastro e edição dos oito grupos de informações existentes.
 - Busca por prontuário, CRIAD, responsável, técnicos e atendimentos; filtros por mês de entrada e situação.
+- Filtro de ano de entrada ao lado do mês, com Todos os anos e os anos presentes nos cadastros (mais recentes primeiro). Mês e ano podem ser combinados e valem também nas exportações. A lista de anos se atualiza com os dados do banco, sem depender dos filtros; preserva a seleção enquanto o ano existir. Datas ausentes/inválidas não entram em um período específico. Ao sair, seleção e opções são limpas.
 - Prontuário usa correspondência exata: 05 encontra 5, e 01 encontra 1 sem incluir 101 ou 2201. Na busca geral, entradas somente numéricas também procuram o prontuário exato; nomes e demais textos continuam com busca parcial. Os identificadores salvos e exportados não são alterados.
 - Ordenação por data de entrada (mais recentes/mais antigos) ou número do prontuário (menor/maior, com ordem numérica natural). Datas ausentes ou inválidas ficam no final. A ordem vale para a lista paginada e exportações; mudar filtros ou ordem volta à primeira página. Ao sair, a ordem retorna aos mais recentes.
 - Contadores, ordenação por data de entrada, paginação e visualização de detalhes.

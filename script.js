@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebas
 import { setupExports } from "./exports.js";
 import { setupImport, appendImportedDetails } from "./import-ui.js";
 import { identity, readableSnapshot } from "./import-core.js";
-import { exactProntuario, matchesGeneralSearch, sortCases } from "./case-list.js";
+import { exactProntuario, matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js";
 import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -173,13 +173,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const numero = $("filtroProntuario").value.trim().toLocaleLowerCase("pt-BR");
     const criad = $("filtroCriad").value.trim().toLocaleLowerCase("pt-BR");
     const mes = $("filtroMes").value;
+    const ano = $("filtroAno").value;
     const status = $("filtroSituacao").value;
     return sortCases(cases.filter(({ data }) => {
-      const entryMonth = data.dataEntrada ? new Date(`${data.dataEntrada}T12:00:00`).getMonth() + 1 : "";
       return matchesGeneralSearch(data, query) &&
         (!numero || exactProntuario(data.numeroProntuario, numero)) &&
         (!criad || String(data.nomeCriad || "").toLocaleLowerCase("pt-BR").includes(criad)) &&
-        (!mes || String(entryMonth) === mes) && (!status || data.situacaoAtual === status);
+        matchesEntryPeriod(data, mes, ano) && (!status || data.situacaoAtual === status);
     }), $("ordenacaoCasos").value);
   }
 
@@ -264,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao", "ordenacaoCasos"].forEach((id) => {
+  ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroAno", "filtroSituacao", "ordenacaoCasos"].forEach((id) => {
     $(id).addEventListener("input", () => { page = 1; render(); });
   });
 
@@ -305,7 +305,8 @@ document.addEventListener("DOMContentLoaded", () => {
       $("password").value = "";
       $("password").type = "password";
       $("show-password").checked = false;
-      ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao"].forEach(id => { $(id).value = ""; });
+      ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroAno", "filtroSituacao"].forEach(id => { $(id).value = ""; });
+      $("filtroAno").replaceChildren(new Option("Todos os anos", ""));
       $("ordenacaoCasos").value = "recentes";
       $("export-columns-dialog").close();
       caseTableBody.replaceChildren();
@@ -321,6 +322,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = child.val();
         if (data && data.numeroProntuario) cases.push({ key: child.key, data });
       });
+      const selectedYear = $("filtroAno").value;
+      const years = availableYears(cases);
+      $("filtroAno").replaceChildren(new Option("Todos os anos", ""), ...years.map(year => new Option(year, year)));
+      $("filtroAno").value = years.includes(selectedYear) ? selectedYear : "";
+      if (selectedYear && !years.includes(selectedYear)) page = 1;
       render();
     }, (error) => notify(firebaseMessage(error), "danger"));
   }

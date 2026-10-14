@@ -1,6 +1,15 @@
 import { dateValue } from './import-core.js';
 
 const text = value => String(value ?? '').normalize('NFKC').trim().toLocaleLowerCase('pt-BR');
+export function availableYears(cases) {
+  return [...new Set(cases.map(({ data }) => dateValue(data.dataEntrada).slice(0, 4)).filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a));
+}
+export function matchesEntryPeriod(data, month = '', year = '') {
+  if (!month && !year) return true;
+  const date = dateValue(data.dataEntrada);
+  return Boolean(date) && (!month || Number(date.slice(5, 7)) === Number(month)) && (!year || date.slice(0, 4) === String(year));
+}
 // Search equivalence only: never rewrite stored identifiers or import keys.
 const searchNumber = value => {
   const normalized = text(value);
