@@ -32,6 +32,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .auth-box .btn { min-height: 48px; }
 .auth-box a { font-weight: 600; text-decoration: none; }
 .auth-box a:hover { text-decoration: underline; }
+.auth-status { min-height: 1.5em; margin: 12px 0 0; color: var(--text-muted); font-size: .8rem; line-height: 1.5; }
 .form-label { margin-bottom: 8px; color: #3c4863; font-size: .81rem; font-weight: 600; }
 .form-control, .form-select { min-height: 46px; padding: 11px 14px; border: 1px solid var(--border-color); border-radius: 10px; background-color: #fff; color: var(--text-main); font-size: .875rem; transition: border-color .18s, box-shadow .18s, background-color .18s; }
 .form-control::placeholder { color: #7b869c; opacity: 1; }

@@ -1,0 +1,32 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "access": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "casos": {
+      ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true",
+      "$caseId": {
+        ".write": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('canWrite').val() === true && newData.exists()",
+        ".validate": "newData.hasChildren(['numeroProntuario', 'dataEntrada'])",
+        "numeroProntuario": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "dataEntrada": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        },
+        "situacaoAtual": {
+          ".validate": "newData.isString() && (newData.val() === 'ativo' || newData.val() === 'suspenso' || newData.val() === 'encerrado_com_protecao' || newData.val() === 'encerrado_sem_protecao' || newData.val() === 'nao_competencia')"
+        },
+        "$other": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        }
+      }
+    }
+  }
+}
+
