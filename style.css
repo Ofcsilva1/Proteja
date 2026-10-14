@@ -287,12 +287,12 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select,
 [data-theme="dark"] .action-bar .form-control,
-[data-theme="dark"] .action-bar .form-select { border-color: #35435e; background-color: #121c2d; color: #e2e9f7; }
-[data-theme="dark"] .form-control::placeholder { color: #93a2bc; }
+[data-theme="dark"] .action-bar .form-select { border-color: #7184a4; background-color: #24344e; color: #f4f7ff; }
+[data-theme="dark"] .form-control::placeholder { color: #b6c4dc; }
 [data-theme="dark"] .form-control:hover,
 [data-theme="dark"] .form-select:hover { border-color: #627399; }
 [data-theme="dark"] .form-control:focus,
-[data-theme="dark"] .form-select:focus { border-color: #96a5ff; background-color: #162239; box-shadow: 0 0 0 4px rgb(127 146 255 / 14%); }
+[data-theme="dark"] .form-select:focus { border-color: #b4c0ff; background-color: #2b3e5c; color: #fff; box-shadow: 0 0 0 4px rgb(127 146 255 / 25%); }
 [data-theme="dark"] .input-group-text,
 [data-theme="dark"] .action-bar .input-group-text { border-color: #35435e; background: #202e47; color: #a6b6d5; }
 [data-theme="dark"] .export-group .btn { background: #202e47; }
@@ -418,6 +418,36 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
 .workflow-heading h3 { margin: 0 0 8px; font-size: 1.25rem; }
 .workflow-heading p { max-width: 680px; color: var(--text-muted); font-size: .86rem; }
 .workflow-heading > .btn { flex-shrink: 0; }
+.workflow-heading > .btn { min-height: 48px; padding: 12px 22px; }
+/* Search spans the panel; exports have their own full-width toolbar. */
+.action-bar > .row { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.action-bar .col-md-9 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.action-bar #ordenacaoCasos { width: 100%; }
+.action-bar .export-group #ordenacaoCasos { width: min(100%, 320px); margin-right: auto; }
+.action-bar .export-group { width: 100%; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border-color); }
+@media (max-width: 1100px) { .action-bar .col-md-9 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .action-bar .col-md-9 { grid-template-columns: minmax(0, 1fr); } .action-bar .export-group { justify-content: flex-start; } }
+.workflow-search { padding: 22px; }
+.workflow-search h4, .workflow-callout h4 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 700; }
+.workflow-help { margin: 0; color: var(--text-muted); font-size: .84rem; line-height: 1.6; }
+.workflow-search .workflow-filters { padding: 18px 0; }
+.workflow-callout { padding: 22px; border: 1px solid #b8c4ff; border-left: 4px solid var(--primary-color); border-radius: 12px; background: #f0f3ff; }
+.workflow-callout p { margin-bottom: 16px; }
+.workflow-callout small { display: block; margin-top: 12px; color: var(--text-muted); }
+.workflow-callout .workflow-case-actions { justify-content: flex-start; }
+.workflow-notes-field { padding: 16px; border: 1px solid #b8c4ff; border-radius: 12px; background: #f0f3ff; }
+.workflow-notes-field > span { font-weight: 700; }
+.workflow-notes-field small { color: var(--text-muted); line-height: 1.5; }
+[data-theme="dark"] .workflow-callout,
+[data-theme="dark"] .workflow-notes-field { background: #233353; border-color: #8194d8; }
+[data-theme="dark"] .workflow-filters label,
+[data-theme="dark"] .workflow-editor-fields label { color: #eef3ff; }
+[data-theme="dark"] .form-control:disabled,
+[data-theme="dark"] .form-select:disabled { background-color: #182234; border-color: #465775; color: #aebbd0; }
+[data-theme="dark"] .form-select { --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23dae4ff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); }
+[data-theme="dark"] .workflow-table { --bs-table-bg: var(--card-bg); --bs-table-color: #eef3ff; --bs-table-border-color: #526582; }
+[data-theme="dark"] .workflow-table thead th { background: #263854; color: #fff; }
+[data-theme="dark"] .workflow-table tbody tr:hover > td { background: #23334d; }
 .workflow-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
 .workflow-summary article { padding: 18px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--card-bg); }
 .workflow-summary span { display: block; color: var(--text-muted); font-size: .82rem; }

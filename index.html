@@ -142,14 +142,14 @@ O acesso é destinado a contas autorizadas pela instituição.
 <option value="">Todos os subtipos sexuais</option>
 </select>
 <button id="btnLimparFiltros" type="button" class="btn btn-outline-secondary clear-filters"><i class="bi bi-x-circle" aria-hidden="true"></i> Limpar filtros</button>
+</div>
+<div class="col-md-3 text-end export-group">
 <select id="ordenacaoCasos" class="form-select" aria-label="Ordenar casos">
 <option value="recentes">Mais recentes (entrada)</option>
 <option value="antigos">Mais antigos (entrada)</option>
 <option value="numero_crescente">Prontuário: crescente</option>
 <option value="numero_decrescente">Prontuário: decrescente</option>
 </select>
-</div>
-<div class="col-md-3 text-end export-group">
 <button type="button" id="btnImport" class="btn btn-light border import-trigger" aria-haspopup="dialog" aria-controls="import-dialog"><i class="bi bi-upload" aria-hidden="true"></i><span>Importar planilha</span></button>
 <button type="button" id="btnExportColumns" class="btn btn-light export-columns-trigger" aria-haspopup="dialog" aria-controls="export-columns-dialog"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><span>Colunas <span id="export-column-count">13</span></span></button>
 <button id="btnExportCSV" class="btn btn-light border btn-sm" title="Exportar CSV"><i class="bi bi-filetype-csv text-secondary"></i></button>
@@ -407,7 +407,7 @@ O acesso é destinado a contas autorizadas pela instituição.
 
 <div class="tab-pane fade" id="tab8">
 <div class="form-grid">
-<div class="field-group full-width"><p>Registre cada atendimento ou pendência separadamente, com data escolhida no calendário. Salve o prontuário antes de adicionar esses itens.</p><div class="workflow-case-actions"><button id="btnCaseAgenda" type="button" class="btn btn-outline-primary" disabled>Agenda deste prontuário</button><button id="btnCaseTasks" type="button" class="btn btn-outline-primary" disabled>Pendências deste prontuário</button></div></div>
+<div class="field-group full-width workflow-callout"><h4>Registrar uma data e um relato</h4><p>Primeiro salve o prontuário. Depois, ao editá-lo, clique em <strong>Adicionar atendimento</strong> para escolher a data no calendário, informar o técnico e escrever a descrição do atendimento. Cada atendimento terá seu próprio registro.</p><div class="workflow-case-actions"><button id="btnCaseAgenda" type="button" class="btn btn-primary" disabled>Adicionar atendimento</button><button id="btnCaseTasks" type="button" class="btn btn-outline-primary" disabled>Adicionar pendência</button></div><small>Para consultar os registros existentes, use “Agenda e atendimentos” ou “Pendências e retornos” no menu lateral.</small></div>
 <div class="field-group">
 <label class="form-label">Técnicos de referência</label>
 <input type="text" id="tecnicos-referencia" class="form-control" />

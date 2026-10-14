@@ -4,6 +4,10 @@
 
 No menu, abra **Agenda e atendimentos** e clique em **Adicionar atendimento**. Escolha um prontuário já salvo, informe o responsável e selecione a data prevista pelo calendário. Horário e observações são opcionais. Selecione o tipo e a situação e salve.
 
+A área **Buscar atendimentos registrados** serve somente para consulta. “Buscar por prontuário” seleciona um caso pelo número/nome; “Ou digitar o nº do prontuário” busca o número exato (05 encontra 5). “Data agendada a partir de” e “Data agendada até” delimitam a busca pela data prevista e não cadastram datas. Para cadastrar, use o botão destacado **Adicionar atendimento**; a descrição fica em **Descrição / relato do atendimento**, dentro do formulário que esse botão abre.
+
+Na aba Atendimentos de um prontuário já salvo, **Adicionar atendimento** abre esse formulário diretamente com o caso selecionado. Alterações ainda não salvas no prontuário exigem confirmação antes de sair. Os filtros das outras telas não são apagados por esse atalho.
+
 A agenda é uma lista cronológica paginada, com filtros por prontuário, número exato, responsável, situação, período e intervalo de datas. A referência de hoje usa o horário da Bahia. O período Hoje e próximos 6 dias abrange sete datas de calendário, incluindo hoje. O intervalo de datas considera a data prevista do atendimento, inclusive para itens realizados.
 
 As situações são Agendado, Realizado, Não compareceu e Cancelado. Para registrar um resultado, abra **Editar / registrar resultado**. Ao marcar Realizado, informe também a data real de realização; ela fica separada da data prevista. Datas passadas em itens agendados geram um aviso de conferência, sem presumir falta ou realização.

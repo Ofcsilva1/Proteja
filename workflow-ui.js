@@ -14,16 +14,16 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
       <div class="workflow-heading"><div><h3>${isAgenda ? 'Quem vamos atender?' : 'O que precisamos resolver?'}</h3><p>${isAgenda ? 'Registre cada atendimento com data, horário e técnico. Datas passadas não são marcadas como falta automaticamente.' : 'Organize responsáveis, prazos e retornos. Prazos vencidos aparecem como atrasados enquanto a pendência estiver aberta.'}</p></div><button id="${kind}-new" class="btn btn-primary" type="button">${isAgenda ? 'Adicionar atendimento' : 'Adicionar pendência'}</button></div>
       <p id="${kind}-access" class="text-muted" role="status"></p>
       <div class="workflow-summary" id="${kind}-summary" aria-label="Resumo da seleção"></div>
-      <div class="card-panel workflow-filters">
-        <label>Prontuário<select id="${kind}-case" class="form-select"><option value="">Todos os prontuários</option></select></label>
-        <label>Número exato<input id="${kind}-numero" class="form-control" type="search" placeholder="Ex.: 05 encontra 5" /></label>
+      <section class="card-panel workflow-search" aria-labelledby="${kind}-search-title"><h4 id="${kind}-search-title">${isAgenda ? 'Buscar atendimentos registrados' : 'Buscar pendências registradas'}</h4><p class="workflow-help">Estes campos servem apenas para buscar. Para cadastrar ${isAgenda ? 'uma data e um relato, clique em “Adicionar atendimento” acima' : 'uma pendência, clique em “Adicionar pendência” acima'}.</p><div class="workflow-filters">
+        <label>Buscar por prontuário<select id="${kind}-case" class="form-select"><option value="">Todos os prontuários</option></select></label>
+        <label>Ou digitar o nº do prontuário<input id="${kind}-numero" class="form-control" type="search" placeholder="Número exato: 05 encontra 5" /></label>
         <label>${isAgenda ? 'Técnico' : 'Responsável'}<input id="${kind}-owner" class="form-control" type="search" placeholder="Buscar responsável" /></label>
         <label>Situação<select id="${kind}-status" class="form-select"><option value="">Todas as situações</option>${Object.entries(statuses).map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}</select></label>
         <label>Período ${isAgenda ? '(data prevista)' : '(prazo)'}<select id="${kind}-period" class="form-select"><option value="">Todos os períodos</option><option value="hoje">Hoje</option><option value="semana">Hoje e próximos 6 dias</option><option value="atrasados">${isAgenda ? 'Data passada: conferir' : 'Atrasadas'}</option>${isAgenda ? '' : '<option value="sem_prazo">Sem prazo</option>'}</select></label>
-        <label>De<input id="${kind}-from" class="form-control" type="date" /></label>
-        <label>Até<input id="${kind}-until" class="form-control" type="date" /></label>
+        <label>${isAgenda ? 'Data agendada a partir de' : 'Prazo a partir de'}<input id="${kind}-from" class="form-control" type="date" /></label>
+        <label>${isAgenda ? 'Data agendada até' : 'Prazo até'}<input id="${kind}-until" class="form-control" type="date" /></label>
         <button id="${kind}-clear" class="btn btn-outline-secondary" type="button">Limpar filtros</button>
-      </div>
+      </div><p class="workflow-help">Preencha uma ou ambas as datas para limitar a busca ao intervalo desejado. ${isAgenda ? 'Essas datas não criam nem alteram atendimentos.' : 'Essas datas não alteram os prazos cadastrados.'}</p></section>
       <p id="${kind}-notice" role="status" class="workflow-notice"></p>
       <div class="card-panel workflow-table-wrap"><table class="table align-middle workflow-table"><thead><tr><th>Prontuário</th><th>${isAgenda ? 'Data e hora previstas' : 'Pendência'}</th><th>Responsável</th><th>${isAgenda ? 'Tipo' : 'Prazo'}</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="${kind}-rows"></tbody></table><p id="${kind}-empty" class="workflow-empty"></p><nav id="${kind}-pagination" aria-label="Páginas da ${isAgenda ? 'agenda' : 'lista de pendências'}"></nav></div>
       <details class="card-panel workflow-legacy"><summary>Histórico e anotações anteriores do prontuário</summary><p>Selecione um prontuário acima para consultar o texto anterior. Ele não é convertido automaticamente em datas, tarefas ou faltas.</p><div id="${kind}-legacy"></div></details>`;
@@ -43,7 +43,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     <label>Situação<select id="workflow-status" class="form-select" required></select></label>
     <label id="workflow-priority-label">Prioridade<select id="workflow-priority" class="form-select"><option value="normal">Normal</option><option value="alta">Alta</option></select></label>
     <label id="workflow-completed-label" hidden><span id="workflow-completed-title"></span><input id="workflow-completed" class="form-control" type="date" /></label>
-    <label class="workflow-wide">Observações<textarea id="workflow-notes" class="form-control" rows="3" maxlength="4000"></textarea></label>
+    <label class="workflow-wide workflow-notes-field"><span id="workflow-notes-title">Descrição / relato do atendimento</span><small id="workflow-notes-help">Escreva o objetivo do atendimento ou o que foi realizado na data escolhida.</small><textarea id="workflow-notes" aria-describedby="workflow-notes-help" class="form-control" rows="4" maxlength="4000" placeholder="Descreva aqui o atendimento... (opcional)"></textarea></label>
     </fieldset><p id="workflow-error" role="status" aria-live="polite"></p><div class="workflow-editor-footer"><button id="workflow-cancel" type="button" class="btn btn-outline-secondary">Cancelar</button><button id="workflow-save" type="submit" class="btn btn-primary">Salvar</button></div></form>`;
   document.body.append(dialog);
   const form = $('workflow-form');
@@ -135,7 +135,10 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     const isAgenda=kind==='agenda', data=item?.activity||{};
     draft={kind,item,uid:getUser().uid,field:item?.field||PREFIX[kind]+crypto.randomUUID()};
     $('workflow-title').textContent=(item?'Editar ':'Adicionar ')+(isAgenda?'atendimento':'pendência');
-    $('workflow-editor-hint').textContent='Escolha as datas pelo calendário. Anotações antigas permanecem preservadas. O prontuário de um item existente não é transferido por esta edição.';
+    $('workflow-editor-hint').textContent=isAgenda ? '1. Escolha o prontuário e o técnico. 2. Informe a data e a situação. 3. Escreva o relato abaixo e salve. Para um atendimento já realizado, selecione “Realizado” e informe também a data real.' : 'Escolha o prontuário, descreva o que precisa ser resolvido e informe o responsável. O prazo é opcional.';
+    $('workflow-notes-title').textContent=isAgenda?'Descrição / relato do atendimento':'Observações da pendência';
+    $('workflow-notes-help').textContent=isAgenda?'Escreva o objetivo do atendimento ou o que foi realizado na data escolhida.':'Acrescente informações que ajudem a resolver esta pendência.';
+    $('workflow-notes').placeholder=isAgenda?'Descreva aqui o atendimento... (opcional)':'Acrescente informações sobre a pendência... (opcional)';
     caseOptions($('workflow-case'),item?.caseKey||caseKey||$(`${kind}-case`).value,false); $('workflow-case').disabled=Boolean(item);
     $('workflow-owner').value=data.responsavel||''; $('workflow-description').value=data.descricao||'';
     $('workflow-date-title').textContent=isAgenda?'Data prevista do atendimento':'Prazo (opcional)';
@@ -184,5 +187,6 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     $('workflow-editor-fields').disabled=false;$('workflow-save').disabled=false;$('workflow-cancel').disabled=false;render();
   }
   return { render, reset, setCanWrite(value) {writeEnabled=Boolean(value);render();},
-    openScope(kind,caseKey) { $(`${kind}-case`).value=caseKey;states[kind].page=1;navigate(kind==='agenda'?'agenda':'tasks');renderKind(kind); } };
+    openScope(kind,caseKey) { if(navigate(kind==='agenda'?'agenda':'tasks')===false) return; $(`${kind}-case`).value=caseKey;states[kind].page=1;renderKind(kind); },
+    openCreate(kind,caseKey) { if(navigate(kind==='agenda'?'agenda':'tasks')===false) return; $(`${kind}-case`).value=caseKey;states[kind].page=1;renderKind(kind);openEditor(kind,null,caseKey); } };
 }

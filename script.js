@@ -116,8 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("nav-new").addEventListener("click", (event) => { event.preventDefault(); startNewCase(); });
   $("nav-agenda").addEventListener("click", event => { event.preventDefault(); toggleView("agenda"); });
   $("nav-tasks").addEventListener("click", event => { event.preventDefault(); toggleView("tasks"); });
-  $("btnCaseAgenda").addEventListener("click", () => { if (editingKey) workflows.openScope("agenda", editingKey); });
-  $("btnCaseTasks").addEventListener("click", () => { if (editingKey) workflows.openScope("tarefas", editingKey); });
+  $("btnCaseAgenda").addEventListener("click", () => { if (editingKey) workflows.openCreate("agenda", editingKey); });
+  $("btnCaseTasks").addEventListener("click", () => { if (editingKey) workflows.openCreate("tarefas", editingKey); });
   $("btnEmptyNew").addEventListener("click", startNewCase);
   $("btnCancelarForm").addEventListener("click", () => toggleView("list"));
   $("show-password").addEventListener("change", (event) => { $("password").type = event.target.checked ? "text" : "password"; });

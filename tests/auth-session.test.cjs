@@ -294,6 +294,41 @@ test('agenda saves independent dated records, prevents duplicate submission and 
     assert.equal(saved.revisao,2);assert.equal(saved.data,'2026-10-14');assert.equal(saved.dataConclusao,'2026-10-15');
   }finally{await context.close();}
 });
+test('search controls explain date ranges and never create appointments',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('#nav-agenda').click();
+    assert.equal(await page.locator('#agenda-search-title').textContent(),'Buscar atendimentos registrados');
+    await page.getByLabel('Data agendada a partir de',{exact:true}).fill('2026-01-01');
+    await page.getByLabel('Data agendada até',{exact:true}).fill('2026-12-31');
+    await page.locator('#agenda-numero').fill('05');
+    assert.equal(await page.evaluate(()=>window.__authTest.workflowAttempts||0),0);
+    await page.locator('#agenda-new').click();
+    assert.equal(await page.locator('#workflow-date').inputValue(),'');
+    assert.equal(await page.locator('#workflow-notes-title').textContent(),'Descrição / relato do atendimento');
+    await page.locator('#workflow-cancel').click();
+  }finally{await context.close();}
+});
+
+test('case shortcut opens appointment form directly and honors unsaved changes',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    // Bootstrap JS is intercepted in this fixture; reveal the pane for testing its controls.
+    await page.evaluate(()=>{document.getElementById('tab8').classList.add('show','active');});
+    await page.locator('#btnCaseAgenda').click();
+    assert.equal(await page.locator('#workflow-dialog').isVisible(),true);
+    assert.equal(await page.locator('#workflow-case').inputValue(),'workflow-case');
+    await page.locator('#workflow-cancel').click();
+    await page.locator('#nav-list').click();await page.locator('.btnEditar').click();
+    await page.evaluate(()=>{document.getElementById('tab8').classList.add('show','active');});
+    await page.locator('#tecnicos-referencia').fill('Alteração não salva');
+    page.once('dialog',d=>d.dismiss());await page.locator('#btnCaseAgenda').click();
+    assert.equal(await page.locator('#workflow-dialog').isVisible(),false);
+    assert.equal(await page.locator('#form-section').isVisible(),true);
+  }finally{await context.close();}
+});
+
 test('tasks support deadlines, manual priority, completion and exact-case filters',async()=>{
   const {page,context}=await fixture({workflows:true});
   try {
