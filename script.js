@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebas
 import { setupExports } from "./exports.js";
 import { setupImport, appendImportedDetails } from "./import-ui.js";
 import { identity, readableSnapshot } from "./import-core.js";
+import { exactProntuario, matchesGeneralSearch, sortCases } from "./case-list.js";
 import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -173,15 +174,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const criad = $("filtroCriad").value.trim().toLocaleLowerCase("pt-BR");
     const mes = $("filtroMes").value;
     const status = $("filtroSituacao").value;
-    return cases.filter(({ data }) => {
-      const searchable = [data.numeroProntuario, data.nomeCriad, data.responsavelNome, data.tecnicosReferencia, data.datasTexto]
-        .join(" ").toLocaleLowerCase("pt-BR");
+    return sortCases(cases.filter(({ data }) => {
       const entryMonth = data.dataEntrada ? new Date(`${data.dataEntrada}T12:00:00`).getMonth() + 1 : "";
-      return (!query || searchable.includes(query)) &&
-        (!numero || String(data.numeroProntuario || "").toLocaleLowerCase("pt-BR").includes(numero)) &&
+      return matchesGeneralSearch(data, query) &&
+        (!numero || exactProntuario(data.numeroProntuario, numero)) &&
         (!criad || String(data.nomeCriad || "").toLocaleLowerCase("pt-BR").includes(criad)) &&
         (!mes || String(entryMonth) === mes) && (!status || data.situacaoAtual === status);
-    }).sort((a, b) => String(b.data.dataEntrada || "").localeCompare(String(a.data.dataEntrada || "")));
+    }), $("ordenacaoCasos").value);
   }
 
   function makeCell(text, className = "") {
@@ -265,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao"].forEach((id) => {
+  ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao", "ordenacaoCasos"].forEach((id) => {
     $(id).addEventListener("input", () => { page = 1; render(); });
   });
 
@@ -307,6 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
       $("password").type = "password";
       $("show-password").checked = false;
       ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroSituacao"].forEach(id => { $(id).value = ""; });
+      $("ordenacaoCasos").value = "recentes";
       $("export-columns-dialog").close();
       caseTableBody.replaceChildren();
       ["summary-total", "summary-active", "summary-closed", "summary-suspended", "summary-outside"].forEach(id => { $(id).textContent = "0"; });
