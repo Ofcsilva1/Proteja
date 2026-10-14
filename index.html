@@ -147,6 +147,7 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 </select>
 </div>
 <div class="col-md-3 text-end export-group">
+<button type="button" id="btnExportColumns" class="btn btn-light export-columns-trigger" aria-haspopup="dialog" aria-controls="export-columns-dialog"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><span>Colunas <span id="export-column-count">13</span></span></button>
 <button id="btnExportCSV" class="btn btn-light border btn-sm" title="Exportar CSV"><i class="bi bi-filetype-csv text-secondary"></i></button>
 <button id="btnExportXLS" class="btn btn-light border btn-sm" title="Exportar Excel"><i class="bi bi-file-earmark-excel text-success"></i></button>
 <button id="btnExportPDF" class="btn btn-light border btn-sm" title="Exportar PDF"><i class="bi bi-file-earmark-pdf text-danger"></i></button>
@@ -179,6 +180,22 @@ Já tem acesso? <a href="#" id="link-login">Fazer Login</a>
 <nav id="pagination" class="mt-4"></nav>
 </div>
 </section>
+
+<dialog id="export-columns-dialog" class="export-dialog" aria-labelledby="export-dialog-title" aria-describedby="export-dialog-description">
+<form id="export-columns-form">
+<div class="export-dialog-header">
+<div><h3 id="export-dialog-title">Colunas da exportação</h3><p id="export-dialog-description">Escolha os campos para CSV, Excel e PDF. Serão exportados todos os casos encontrados pelos filtros, incluindo outras páginas.</p></div>
+<button type="button" id="btnCloseExportColumns" class="btn btn-outline-secondary" aria-label="Fechar seleção de colunas"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+</div>
+<div class="export-column-presets">
+<button type="button" id="btnSelectAllColumns" class="btn btn-outline-secondary">Marcar todas</button>
+<button type="button" id="btnClearColumns" class="btn btn-outline-secondary">Limpar seleção</button>
+<button type="button" id="btnDefaultColumns" class="btn btn-outline-secondary">Restaurar padrão</button>
+</div>
+<div id="export-column-options" class="export-column-options"></div>
+<div class="export-dialog-footer"><span id="export-selection-summary" role="status" aria-live="polite"></span><div><button type="button" id="btnCancelExportColumns" class="btn btn-outline-secondary">Cancelar</button><button type="submit" id="btnApplyExportColumns" class="btn btn-primary">Aplicar colunas</button></div></div>
+</form>
+</dialog>
 
 <section id="form-section" hidden class="animate__animated">
 <div class="card-panel form-card">
