@@ -134,8 +134,11 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
         status(`${completed} registros processados. ${stop ? 'Importação interrompida; você pode selecionar o arquivo novamente para retomar.' : 'Baixe o relatório para conferir os resultados e pendências.'}`);
         $('import-confirm').checked = false;
       }
-    } catch {
-      if (request === generation) status('Importação interrompida por falta de acesso ou falha de conexão. Os registros confirmados foram mantidos. Baixe o relatório e selecione o arquivo novamente para retomar.');
+    } catch (error) {
+      if (request === generation) {
+        const reason = error?.code ? ` (${error.code})` : '';
+        status(`Importação interrompida${reason}. O Firebase recusou a gravação ou a conexão caiu. Os registros confirmados foram mantidos. Baixe o relatório e selecione o arquivo novamente para retomar.`);
+      }
     } finally {
       setBusy(false);
       if (request === generation) render();
