@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-functions.js";
-import { permissionsForAccess, ROLE } from "./permissions.js?v=20261015.1";
+import { permissionsForAccess } from "./permissions.js?v=20261015.1";
 import { setupExports } from "./exports.js?v=20261014.1";
 import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.1";
 import { readableSnapshot } from "./import-core.js?v=20261014.1";
