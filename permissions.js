@@ -16,10 +16,7 @@ export function permissionsForAccess(access) {
     active,
     role,
     canReadCases: allowed,
-    canReadSensitiveCases: allowed && role !== ROLE.VIEWER,
-    canReadConsultation: allowed,
     canWriteCases: allowed && CASE_WRITERS.has(role),
     canImport: allowed && role === ROLE.ADMIN
   });
 }
-

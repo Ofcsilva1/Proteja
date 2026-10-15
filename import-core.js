@@ -35,12 +35,6 @@ export function dateValue(value) {
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === iso ? iso : '';
 }
 const FIELD_HEADERS = {
-  dataUltimaAlimentacao: ['Data da última alimentação'],
-  idade: ['Idade (na admissão no Proteja)', 'Idade (na admissão no Protja)'],
-  conselhoTutelar: ['Conselho Tutelar'],
-  sexo: ['Sexo'],
-  identidadeGenero: ['Identidade de Genero', 'Identidade de Gênero'],
-  escolaridade: ['Escolaridade', 'Escolaridade (na admissão no Proteja)', 'Escolaridade (na admissão no Protja)'],
   tipoViolencia: ['Tipo de violência'], violenciaSexual: ['Sexual'], outrasViolencias: ['Outros'],
   docOrigem: ['Documento de origem (se houver)'], origemCaso: ['Origem do caso recebido no PROTEJA'],
   cor: ['COR'], detalheOrigem: ['Detalhamento da origem que encaminhou a demanda'],
@@ -116,6 +110,7 @@ export function prepareImport(book) {
       data.datasTexto = [data.datasTexto, ...linked.map(h => [pick(h.values, 'Mês informado'), pick(h.values, 'Relato / datas informadas')].filter(Boolean).join(': '))].filter(Boolean).join('\n\n');
     }
     data.dadosPlanilha = JSON.stringify(values);
+    data.origemImportacao = `${row.sheet}, linha ${row.row}`;
     const sourceErrors = [...(row.errors || []), ...linked.flatMap(h => h.errors || [])];
     return { sheet: row.sheet, row: row.row, data, sourceErrors, errors: validateRecord(data, sourceErrors) };
   });
@@ -136,4 +131,3 @@ export function classifyPlans(plans, existing = []) {
     return { ...plan, errors, state: known.has(id) ? 'existing' : errors.length ? 'invalid' : 'ready' };
   });
 }
-
