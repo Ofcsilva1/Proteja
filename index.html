@@ -111,6 +111,11 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <article class="summary-card"><span class="summary-icon summary-icon-blue"><i class="bi bi-pause-circle" aria-hidden="true"></i></span><div><span class="summary-label">Casos suspensos</span><strong id="summary-suspended">0</strong></div></article>
 <article class="summary-card"><span class="summary-icon summary-icon-outside"><i class="bi bi-arrow-up-right-circle" aria-hidden="true"></i></span><div><span class="summary-label">Não é competência do PROTEJA</span><strong id="summary-outside">0</strong></div></article>
 </div>
+<section id="violence-summary-section" class="card-panel mb-3" aria-labelledby="violence-summary-title" hidden>
+<h3 id="violence-summary-title">Totais por tipo de violência</h3>
+<div id="violence-summary" class="summary-grid" aria-live="polite"></div>
+</section>
+<p id="consultation-view-status" class="text-muted" role="status" hidden></p>
 <div class="action-bar card-panel mb-3">
 <div class="row align-items-center w-100">
 <div class="col-md-9 d-flex gap-3 flex-wrap">
@@ -144,6 +149,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <option value="numero_decrescente">Prontuário: decrescente</option>
 </select>
 <button type="button" id="btnImport" class="btn btn-light border import-trigger" aria-haspopup="dialog" aria-controls="import-dialog"><i class="bi bi-upload" aria-hidden="true"></i><span>Importar planilha</span></button>
+<button type="button" id="btnPrepareConsult" class="btn btn-outline-primary" hidden>Preparar visão de consulta</button>
 <button type="button" id="btnExportColumns" class="btn btn-light export-columns-trigger" aria-haspopup="dialog" aria-controls="export-columns-dialog"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><span>Colunas <span id="export-column-count">13</span></span></button>
 <button id="btnExportCSV" class="btn btn-light border btn-sm" title="Exportar CSV"><i class="bi bi-filetype-csv text-secondary"></i></button>
 <button id="btnExportXLS" class="btn btn-light border btn-sm" title="Exportar Excel"><i class="bi bi-file-earmark-excel text-success"></i></button>
@@ -162,7 +168,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="card-panel table-responsive">
 <table id="case-table" class="table table-hover align-middle">
 <thead>
-<tr>
+<tr id="case-table-headers">
 <th>Prontuário</th>
 <th>Entrada</th>
 <th>Situação</th>
@@ -433,7 +439,8 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js" defer></script>
-<script id="app-script" type="module" src="script.js?v=20261015.1"></script>
+<script id="app-script" type="module" src="script.js?v=20261015.2"></script>
 </body>
 </html>
+
 
