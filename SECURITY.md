@@ -12,3 +12,7 @@ O arquivo database.rules.lockdown.json contém um bloqueio emergencial para publ
 
 Não publique dados de casos, credenciais ou detalhes exploráveis em issues públicas. Use o recurso de relatório privado de vulnerabilidades do GitHub para este repositório, se estiver habilitado, ou entre em contato com o mantenedor por um canal privado antes de divulgar o problema.
 
+
+## Cargos e homologação
+
+A proposta de autorização por cargo está documentada em [docs/RBAC.md](docs/RBAC.md). O exemplo de regras usa `access/{uid}/active` e `access/{uid}/role`; o cadastro de permissões permanece sem escrita pelo cliente. A função `importarCaso` confere o cargo administrador no servidor. Cloud Functions exige o plano Blaze e faturamento; revise os custos e teste no Emulator antes de qualquer implantação. Esses arquivos não mudam as regras ativas no Firebase.

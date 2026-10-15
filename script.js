@@ -1,7 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-functions.js";
+import { permissionsForAccess } from "./permissions.js?v=20261015.1";
 import { setupExports } from "./exports.js?v=20261014.1";
-import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261014.1";
-import { identity, readableSnapshot } from "./import-core.js?v=20261014.1";
+import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.1";
+import { readableSnapshot } from "./import-core.js?v=20261014.1";
 import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
 import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
 import { setupViolenceForm } from "./violence-form.js?v=20261014.1";
@@ -23,8 +25,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const functions = getFunctions(app, "us-central1");
+const importCase = httpsCallable(functions, "importarCaso");
 const auth = getAuth(app);
 const PAGE_SIZE = 10;
+let permissions = permissionsForAccess(null);
 
 document.addEventListener("DOMContentLoaded", () => {
   const $ = (id) => document.getElementById(id);
@@ -102,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function startNewCase() {
+    if (!permissions.canWriteCases) { notify("Seu perfil permite apenas consultar os casos.", "warning"); return; }
     if (!canLeaveCase()) return;
     editingKey = null;
     caseForm.reset();
@@ -168,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   caseForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!permissions.canWriteCases) { notify("Seu perfil não permite alterar casos.", "warning"); return; }
     if (!auth.currentUser) { notify("Entre novamente para salvar um caso.", "warning"); return; }
     if (!caseForm.reportValidity()) return;
     const button = $("btnSalvarCaso");
@@ -253,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
       row.append(makeCell(data.nomeCriad), makeCell(data.responsavelNome), attendance);
       const actions = document.createElement("td"); actions.className = "text-end text-nowrap";
       const details = document.createElement("button"); details.type = "button"; details.className = "btn btn-sm btn-outline-secondary btnDetalhes"; details.title = "Ver detalhes"; details.setAttribute("aria-label", "Ver detalhes do caso"); details.innerHTML = '<i class="bi bi-eye"></i>';
-      const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn btn-sm btn-outline-primary btnEditar ms-1"; edit.title = "Editar caso"; edit.setAttribute("aria-label", "Editar caso"); edit.innerHTML = '<i class="bi bi-pencil"></i>';
+      const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn btn-sm btn-outline-primary btnEditar ms-1"; edit.title = "Editar caso"; edit.setAttribute("aria-label", "Editar caso"); edit.innerHTML = '<i class="bi bi-pencil"></i>'; edit.hidden = !permissions.canWriteCases;
       actions.append(details, edit); row.append(actions); caseTableBody.append(row);
       row.addEventListener("click", (event) => {
         const button = event.target.closest("button"); if (!button) return;
@@ -280,6 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function editCase(key) {
+    if (!permissions.canWriteCases) { notify("Seu perfil não permite alterar casos.", "warning"); return; }
     if (!canLeaveCase()) return;
     const record = cases.find(item => item.key === key); if (!record) return;
     editingKey = key;
@@ -295,9 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); caseDraft=caseSnapshot(); toggleView('form',true);
   }
   async function userCanWrite(uid) {
-    if (auth.currentUser?.uid !== uid) return false;
-    const access = (await get(ref(database, `access/${uid}`))).val();
-    return auth.currentUser?.uid === uid && access?.active === true && access?.canWrite === true;
+    return auth.currentUser?.uid === uid && permissions.canWriteCases;
   }
   const workflows = setupWorkflows({getCases:()=>cases,getUser:()=>auth.currentUser,canWrite:userCanWrite,openCase:editCase,notify,navigate:toggleView,
     saveActivity: async ({caseKey,field,value,expected,uid}) => {
@@ -335,31 +341,27 @@ document.addEventListener("DOMContentLoaded", () => {
   })), notify });
   const importer = setupImport({
     getUser: () => auth.currentUser,
-    getPermission: async uid => {
-      if (auth.currentUser?.uid !== uid) return false;
-      const access = (await get(ref(database, `access/${uid}`))).val();
-      return auth.currentUser?.uid === uid && access?.active === true && access?.canWrite === true;
-    },
+    getPermission: async uid => auth.currentUser?.uid === uid && permissions.canImport,
     getExisting: async () => {
       const snapshot = await get(ref(database, "casos"));
       const records = []; snapshot.forEach(child => records.push(child.val())); return records;
     },
     createCase: async (data, uid) => {
-      const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity(data.numeroProntuario)));
-      const key = 'import_' + Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, '0')).join('');
+      if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
+      const result = await importCase({ data });
       if (auth.currentUser?.uid !== uid) throw new Error("Sessão encerrada");
-      const timestamp = new Date().toISOString();
-      const record = { ...data, criadoEm: timestamp, atualizadoEm: timestamp };
-      const result = await runTransaction(ref(database, `casos/${key}`), current => current === null ? record : undefined, { applyLocally: false });
-      return result.committed;
+      return result.data?.created === true;
     }
   });
 
-  function handleAuthState(user) {
-    authEpoch++;
+  async function handleAuthState(user) {
+    const epoch = ++authEpoch;
     if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
-    authWrapper.hidden = Boolean(user); appWrapper.hidden = !user;
+    workflows.setCanWrite(false);
+    authWrapper.hidden = false;
+    appWrapper.hidden = true;
     if (!user) {
+      permissions = permissionsForAccess(null);
       importer.reset();
       cases = [];
       caseDraft = null;
@@ -381,12 +383,34 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleView("list", true);
       return;
     }
-    authStatus.textContent = "";
-    workflows.setCanWrite(false);
-    const epoch = authEpoch;
-    userCanWrite(user.uid).then(allowed => { if (auth.currentUser?.uid === user.uid && authEpoch === epoch) workflows.setCanWrite(allowed); }).catch(() => { if (auth.currentUser?.uid === user.uid && authEpoch === epoch) workflows.setCanWrite(false); });
+
+    authStatus.textContent = "Verificando o perfil de acesso...";
+    try {
+      const access = (await get(ref(database, `access/${user.uid}`))).val();
+      if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
+      permissions = permissionsForAccess(access);
+      if (!permissions.canReadCases) {
+        authStatus.textContent = "Esta conta ainda não tem um cargo ativo no Proteja. Solicite ao administrador a liberação do acesso.";
+        await signOut(auth);
+        return;
+      }
+      authWrapper.hidden = true;
+      appWrapper.hidden = false;
+      authStatus.textContent = "";
+      $("nav-new").hidden = !permissions.canWriteCases;
+      $("btnEmptyNew").hidden = !permissions.canWriteCases;
+      $("btnImport").hidden = !permissions.canImport;
+      workflows.setCanWrite(permissions.canWriteCases);
+    } catch {
+      if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
+      permissions = permissionsForAccess(null);
+      authStatus.textContent = "Não foi possível verificar seu cargo. Entre novamente mais tarde ou peça ajuda ao administrador.";
+      await signOut(auth);
+      return;
+    }
+
     unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
-      if (auth.currentUser?.uid !== user.uid) return;
+      if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
       cases = [];
       snapshot.forEach((child) => {
         const data = child.val();
@@ -399,7 +423,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (selectedYear && !years.includes(selectedYear)) page = 1;
       syncViolenceOptions();
       render();
-    }, (error) => { cases=[]; editingKey=null; caseDraft=null; caseForm.reset(); violenceForm.fill({}); workflows.reset(); toggleView('list',true); render(); notify(firebaseMessage(error), "danger"); });
+    }, (error) => {
+      cases = []; editingKey = null; caseDraft = null; caseForm.reset(); violenceForm.fill({});
+      workflows.reset(); toggleView("list", true); render(); notify(firebaseMessage(error), "danger");
+    });
   }
 
   async function initializeSession() {
