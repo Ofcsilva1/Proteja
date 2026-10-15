@@ -112,6 +112,7 @@ export function setupExports({ getData, notify, getAllowedKeys = () => null }) {
   const dialog = $("export-columns-dialog");
   const options = $("export-column-options");
   let selectedKeys = new Set(DEFAULT_EXPORT_KEYS);
+  let lastAllowedSignature = null;
 
   // The dialog edits a draft; closing or pressing Escape leaves the export unchanged.
   function allowedColumns() {
@@ -120,6 +121,14 @@ export function setupExports({ getData, notify, getAllowedKeys = () => null }) {
   }
   function refreshColumns() {
     const columnsAllowed = allowedColumns();
+    const signature = columnsAllowed.map(column => column.key).join("|");
+    const allSignature = EXPORT_COLUMNS.map(column => column.key).join("|");
+    if (lastAllowedSignature !== null && signature !== lastAllowedSignature) {
+      selectedKeys = signature === allSignature
+        ? new Set(DEFAULT_EXPORT_KEYS)
+        : new Set(columnsAllowed.map(column => column.key));
+    }
+    lastAllowedSignature = signature;
     const allowedSet = new Set(columnsAllowed.map(column => column.key));
     selectedKeys = new Set([...selectedKeys].filter(key => allowedSet.has(key)));
     if (!selectedKeys.size) selectedKeys = new Set(columnsAllowed.map(column => column.key));
