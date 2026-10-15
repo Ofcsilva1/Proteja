@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebas
 import { setupExports } from "./exports.js";
 import { setupImport, appendImportedDetails } from "./import-ui.js";
 import { identity, readableSnapshot } from "./import-core.js";
-import { exactProntuario, matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js";
+import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js";
 import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js";
 import { setupViolenceForm } from "./violence-form.js";
 import { setupWorkflows } from "./workflow-ui.js";
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let signingIn = false;
   const caseForm = $("case-form");
   const violenceForm = setupViolenceForm();
-  const filterIds = ["filtroBusca", "filtroProntuario", "filtroCriad", "filtroMes", "filtroAno", "filtroSituacao", "filtroViolencia", "filtroViolenciaSexual"];
+  const filterIds = ["filtroBusca", "filtroMes", "filtroAno", "filtroSituacao", "filtroViolencia", "filtroViolenciaSexual"];
   const caseTableBody = document.querySelector("#case-table tbody");
   const statusLabels = {
     ativo: "Ativo", suspenso: "Suspenso", encerrado_com_protecao: "Encerrado com proteção",
@@ -190,15 +190,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function filteredCases() {
     const query = $("filtroBusca").value.trim().toLocaleLowerCase("pt-BR");
-    const numero = $("filtroProntuario").value.trim().toLocaleLowerCase("pt-BR");
-    const criad = $("filtroCriad").value.trim().toLocaleLowerCase("pt-BR");
     const mes = $("filtroMes").value;
     const ano = $("filtroAno").value;
     const status = $("filtroSituacao").value;
     return sortCases(cases.filter(({ data }) => {
       return matchesGeneralSearch(data, query) &&
-        (!numero || exactProntuario(data.numeroProntuario, numero)) &&
-        (!criad || String(data.nomeCriad || "").toLocaleLowerCase("pt-BR").includes(criad)) &&
         matchesEntryPeriod(data, mes, ano) && (!status || data.situacaoAtual === status) &&
         matchesViolence(data, $("filtroViolencia").value, $("filtroViolenciaSexual").value);
     }), $("ordenacaoCasos").value);

@@ -16,7 +16,6 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
       <div class="workflow-summary" id="${kind}-summary" aria-label="Resumo da seleção"></div>
       <section class="card-panel workflow-search" aria-labelledby="${kind}-search-title"><h4 id="${kind}-search-title">${isAgenda ? 'Buscar atendimentos registrados' : 'Buscar pendências registradas'}</h4><p class="workflow-help">Estes campos servem apenas para buscar. Para cadastrar ${isAgenda ? 'uma data e um relato, clique em “Adicionar atendimento” acima' : 'uma pendência, clique em “Adicionar pendência” acima'}.</p><div class="workflow-filters">
         <label>Buscar por prontuário<select id="${kind}-case" class="form-select"><option value="">Todos os prontuários</option></select></label>
-        <label>Ou digitar o nº do prontuário<input id="${kind}-numero" class="form-control" type="search" placeholder="Número exato: 05 encontra 5" /></label>
         <label>${isAgenda ? 'Técnico' : 'Responsável'}<input id="${kind}-owner" class="form-control" type="search" placeholder="Buscar responsável" /></label>
         <label>Situação<select id="${kind}-status" class="form-select"><option value="">Todas as situações</option>${Object.entries(statuses).map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}</select></label>
         <label>Período ${isAgenda ? '(data prevista)' : '(prazo)'}<select id="${kind}-period" class="form-select"><option value="">Todos os períodos</option><option value="hoje">Hoje</option><option value="semana">Hoje e próximos 6 dias</option><option value="atrasados">${isAgenda ? 'Data passada: conferir' : 'Atrasadas'}</option>${isAgenda ? '' : '<option value="sem_prazo">Sem prazo</option>'}</select></label>
@@ -27,7 +26,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
       <p id="${kind}-notice" role="status" class="workflow-notice"></p>
       <div class="card-panel workflow-table-wrap"><table class="table align-middle workflow-table"><thead><tr><th>Prontuário</th><th>${isAgenda ? 'Data e hora previstas' : 'Pendência'}</th><th>Responsável</th><th>${isAgenda ? 'Tipo' : 'Prazo'}</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="${kind}-rows"></tbody></table><p id="${kind}-empty" class="workflow-empty"></p><nav id="${kind}-pagination" aria-label="Páginas da ${isAgenda ? 'agenda' : 'lista de pendências'}"></nav></div>
       <details class="card-panel workflow-legacy"><summary>Histórico e anotações anteriores do prontuário</summary><p>Selecione um prontuário acima para consultar o texto anterior. Ele não é convertido automaticamente em datas, tarefas ou faltas.</p><div id="${kind}-legacy"></div></details>`;
-    const ids = ['case', 'numero', 'owner', 'status', 'period', 'from', 'until'];
+    const ids = ['case', 'owner', 'status', 'period', 'from', 'until'];
     for (const suffix of ids) $(`${kind}-${suffix}`).addEventListener('input', () => { states[kind].page = 1; renderKind(kind); });
     $(`${kind}-clear`).addEventListener('click', () => { ids.forEach(suffix => { $(`${kind}-${suffix}`).value = ''; }); states[kind].page = 1; renderKind(kind); });
     $(`${kind}-new`).addEventListener('click', () => openEditor(kind));
@@ -54,7 +53,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     select.value = records.some(c=>c.key===selected) ? selected : '';
   }
   function filters(kind) {
-    return { caseKey: $(`${kind}-case`).value, numero: $(`${kind}-numero`).value.trim(), responsavel: $(`${kind}-owner`).value,
+    return { caseKey: $(`${kind}-case`).value, responsavel: $(`${kind}-owner`).value,
       situacao: $(`${kind}-status`).value, periodo: $(`${kind}-period`).value, de: $(`${kind}-from`).value, ate: $(`${kind}-until`).value };
   }
   function renderKind(kind) {
@@ -182,7 +181,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     generation++;busy=false;writeEnabled=false;closeEditor(true);form.reset();$('workflow-case').replaceChildren();
     for(const kind of ['agenda','tarefas']) {
       states[kind].page=1;
-      for(const suffix of ['case','numero','owner','status','period','from','until']) $(`${kind}-${suffix}`).value='';
+      for(const suffix of ['case','owner','status','period','from','until']) $(`${kind}-${suffix}`).value='';
     }
     $('workflow-editor-fields').disabled=false;$('workflow-save').disabled=false;$('workflow-cancel').disabled=false;render();
   }
