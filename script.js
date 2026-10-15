@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-functions.js";
-import { permissionsForAccess } from "./permissions.js?v=20261015.1";
+import { permissionsForAccess } from "./permissions.js?v=20261015.2";
 import { setupExports } from "./exports.js?v=20261014.1";
-import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.1";
+import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.2";
 import { readableSnapshot } from "./import-core.js?v=20261014.1";
 import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
 import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
@@ -25,8 +24,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
-const functions = getFunctions(app, "us-central1");
-const importCase = httpsCallable(functions, "importarCaso");
 const auth = getAuth(app);
 const PAGE_SIZE = 10;
 let permissions = permissionsForAccess(null);
@@ -348,9 +345,17 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     createCase: async (data, uid) => {
       if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
-      const result = await importCase({ data });
+      if (!globalThis.crypto?.subtle) throw new Error("Este navegador não oferece criptografia segura para concluir a importação.");
+      const identity = data.numeroProntuario.normalize("NFKC").trim().toUpperCase();
+      const digestBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity));
+      const digest = [...new Uint8Array(digestBytes)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+      if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
+      const timestamp = new Date().toISOString();
+      const result = await runTransaction(ref(database, `casos/import_${digest}`), current => current === null
+        ? { ...data, criadoEm: timestamp, atualizadoEm: timestamp }
+        : undefined, { applyLocally: false });
       if (auth.currentUser?.uid !== uid) throw new Error("Sessão encerrada");
-      return result.data?.created === true;
+      return result.committed;
     }
   });
 
