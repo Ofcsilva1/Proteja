@@ -262,7 +262,7 @@ test('500-row preview fits mobile and desktop without overflowing the page',asyn
 
 async function workflowLogin(page, readOnly=false) {
   await ready(page);await credentials(page);await page.locator('#btnLogin').click();
-  await page.waitForFunction(()=>window.__authTest.workflowCases?.length===1);
+  await page.waitForFunction(()=>window.__authTest.workflowCases?.length>0);
   if(!readOnly)await page.waitForFunction(()=>!document.getElementById('agenda-new').disabled);
 }
 async function newAppointment(page) {
@@ -294,6 +294,57 @@ test('agenda saves independent dated records, prevents duplicate submission and 
     assert.equal(saved.revisao,2);assert.equal(saved.data,'2026-10-14');assert.equal(saved.dataConclusao,'2026-10-15');
   }finally{await context.close();}
 });
+test('single case search matches exact numbers and also CRIAD, owner and technician',async()=>{
+  const workflowCases=[5,15,105].map(n=>({key:'case-'+n,data:{numeroProntuario:String(n),dataEntrada:'2026-01-01',situacaoAtual:'ativo',nomeCriad:'Pessoa fictícia '+n,responsavelNome:'Responsável '+n,tecnicosReferencia:'Equipe '+n}}));
+  const {page,context}=await fixture({workflows:true,workflowCases});
+  try {
+    await workflowLogin(page);
+    assert.equal(await page.locator('#filtroProntuario, #filtroCriad').count(),0);
+    for(const query of ['05','Pessoa fictícia 5','Responsável 5','Equipe 5']){
+      await page.locator('#filtroBusca').fill(query);
+      assert.equal(await page.locator('#case-table tbody tr:not(.details-row)').count(),1);
+      assert.equal(await page.locator('#case-table .case-number').textContent(),'5');
+    }
+    await page.locator('#btnLimparFiltros').click();
+    assert.equal(await page.locator('#case-table tbody tr:not(.details-row)').count(),3);
+  }finally{await context.close();}
+});
+
+test('search controls explain date ranges and never create appointments',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('#nav-agenda').click();
+    assert.equal(await page.locator('#agenda-search-title').textContent(),'Buscar atendimentos registrados');
+    await page.getByLabel('Data agendada a partir de',{exact:true}).fill('2026-01-01');
+    await page.getByLabel('Data agendada até',{exact:true}).fill('2026-12-31');
+    await page.locator('#agenda-case').selectOption('workflow-case');
+    assert.equal(await page.evaluate(()=>window.__authTest.workflowAttempts||0),0);
+    await page.locator('#agenda-new').click();
+    assert.equal(await page.locator('#workflow-date').inputValue(),'');
+    assert.equal(await page.locator('#workflow-notes-title').textContent(),'Descrição / relato do atendimento');
+    await page.locator('#workflow-cancel').click();
+  }finally{await context.close();}
+});
+
+test('case shortcut opens appointment form directly and honors unsaved changes',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    // Bootstrap JS is intercepted in this fixture; reveal the pane for testing its controls.
+    await page.evaluate(()=>{document.getElementById('tab8').classList.add('show','active');});
+    await page.locator('#btnCaseAgenda').click();
+    assert.equal(await page.locator('#workflow-dialog').isVisible(),true);
+    assert.equal(await page.locator('#workflow-case').inputValue(),'workflow-case');
+    await page.locator('#workflow-cancel').click();
+    await page.locator('#nav-list').click();await page.locator('.btnEditar').click();
+    await page.evaluate(()=>{document.getElementById('tab8').classList.add('show','active');});
+    await page.locator('#tecnicos-referencia').fill('Alteração não salva');
+    page.once('dialog',d=>d.dismiss());await page.locator('#btnCaseAgenda').click();
+    assert.equal(await page.locator('#workflow-dialog').isVisible(),false);
+    assert.equal(await page.locator('#form-section').isVisible(),true);
+  }finally{await context.close();}
+});
+
 test('tasks support deadlines, manual priority, completion and exact-case filters',async()=>{
   const {page,context}=await fixture({workflows:true});
   try {
@@ -302,7 +353,7 @@ test('tasks support deadlines, manual priority, completion and exact-case filter
     await page.locator('#workflow-description').fill('Conferir documento fictício');await page.locator('#workflow-date').fill('2000-01-01');
     await page.locator('#workflow-priority').selectOption('alta');await page.locator('#workflow-save').click();await workflowSaved(page);
     assert.match(await page.locator('#tarefas-rows').textContent(),/Prazo vencido/);
-    await page.locator('#tarefas-numero').fill('05');assert.equal(await page.locator('#tarefas-rows tr').count(),1);
+    await page.locator('#tarefas-case').selectOption('workflow-case');assert.equal(await page.locator('#tarefas-rows tr').count(),1);
     await page.locator('#tarefas-owner').fill('inexistente');assert.equal(await page.locator('#tarefas-rows tr').count(),0);
     await page.locator('#tarefas-clear').click();await page.locator('#tarefas-rows .btn').click();
     await page.locator('#workflow-status').selectOption('concluida');await page.locator('#workflow-completed').fill('2026-10-14');
@@ -364,8 +415,7 @@ test('new navigation protects unsaved case edits and reduced motion disables cou
     await page.locator('#detalhe-origem').fill('Alteração fictícia não salva');page.once('dialog',d=>d.dismiss());
     await page.locator('#nav-agenda').click();assert.equal(await page.locator('#form-section').isVisible(),true);
     assert.equal(await page.locator('#detalhe-origem').inputValue(),'Alteração fictícia não salva');
-    page.once('dialog',d=>d.accept());await page.locator('#nav-list').click();await page.locator('#filtroProntuario').fill('inexistente');
+    page.once('dialog',d=>d.accept());await page.locator('#nav-list').click();await page.locator('#filtroBusca').fill('inexistente');
     assert.equal(await page.evaluate(()=>document.getElementById('summary-total').getAnimations().length),0);
   }finally{await context.close();}
 });
-
