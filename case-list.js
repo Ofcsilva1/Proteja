@@ -1,4 +1,4 @@
-import { dateValue } from './import-core.js?v=20261014.1';
+import { dateValue } from './import-core.js?v=20261015.3';
 
 const text = value => String(value ?? '').normalize('NFKC').trim().toLocaleLowerCase('pt-BR');
 export function availableYears(cases) {

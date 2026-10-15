@@ -1,4 +1,4 @@
-import { APPOINTMENT_STATUS, TASK_STATUS, APPOINTMENT_TYPES, TASK_TYPES, PREFIX, todayISO, strictDate, collectActivities, filterActivities, isLate, buildActivity } from './workflow-core.js?v=20261014.1';
+import { APPOINTMENT_STATUS, TASK_STATUS, APPOINTMENT_TYPES, TASK_TYPES, PREFIX, todayISO, strictDate, collectActivities, filterActivities, isLate, buildActivity } from './workflow-core.js?v=20261015.3';
 
 const PAGE_SIZE = 10;
 const textNode = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };

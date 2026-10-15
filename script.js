@@ -1,14 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-import { permissionsForAccess } from "./permissions.js?v=20261015.2";
-import { setupExports } from "./exports.js?v=20261014.1";
-import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.2";
-import { readableSnapshot } from "./import-core.js?v=20261014.1";
-import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
-import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
-import { setupViolenceForm } from "./violence-form.js?v=20261014.1";
-import { setupWorkflows } from "./workflow-ui.js?v=20261014.1";
-import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js?v=20261014.1";
-import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+import { caseKey, hasDuplicate, caseReplacement } from "./case-save.js?v=20261015.3";
+import { permissionsForAccess } from "./permissions.js?v=20261015.3";
+import { setupExports } from "./exports.js?v=20261015.3";
+import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.3";
+import { readableSnapshot } from "./import-core.js?v=20261015.3";
+import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261015.3";
+import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261015.3";
+import { setupViolenceForm } from "./violence-form.js?v=20261015.3";
+import { setupWorkflows } from "./workflow-ui.js?v=20261015.3";
+import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js?v=20261015.3";
+import { getDatabase, ref, onValue, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -47,11 +48,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let cases = [];
   let page = 1;
   let editingKey = null;
+  let editingBase = null;
+  let savingCase = false;
   let unsubscribeCases = null;
   let caseDraft = null;
   let authEpoch = 0;
   const caseSnapshot = () => JSON.stringify([...caseForm.querySelectorAll('input,select,textarea')].map(input => [input.id, input.value, input.checked]));
   function canLeaveCase() {
+    if (savingCase) return false;
     return $("form-section").hidden || !caseDraft || caseSnapshot() === caseDraft || window.confirm("Sair sem salvar as alterações do prontuário?");
   }
 
@@ -107,6 +111,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!permissions.canWriteCases) { notify("Seu perfil permite apenas consultar os casos.", "warning"); return; }
     if (!canLeaveCase()) return;
     editingKey = null;
+    editingBase = null;
+    $("case-save-status").textContent = "";
+    $("numero-prontuario").readOnly = false;
+    $("numero-prontuario").title = "";
     caseForm.reset();
     violenceForm.fill({});
     $("btnCaseAgenda").disabled = $("btnCaseTasks").disabled = true;
@@ -152,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   $("btnLogout").addEventListener("click", async () => {
-    if (!canLeaveCase()) return;
+    if (!savingCase && !canLeaveCase()) return;
     try { await signOut(auth); notify("Você saiu do sistema."); }
     catch (error) { notify(firebaseMessage(error), "danger"); }
   });
@@ -171,24 +179,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
   caseForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (savingCase) return;
     if (!permissions.canWriteCases) { notify("Seu perfil não permite alterar casos.", "warning"); return; }
     if (!auth.currentUser) { notify("Entre novamente para salvar um caso.", "warning"); return; }
     if (!caseForm.reportValidity()) return;
     const button = $("btnSalvarCaso");
     const fullData = Object.fromEntries(Object.entries(fieldMap).map(([key, id]) => [key, $(id).value.trim()]));
-    fullData.atualizadoEm = new Date().toISOString();
     if (!fullData.situacaoAtual) delete fullData.situacaoAtual;
+    const uid = auth.currentUser.uid, epoch = authEpoch, key = editingKey;
+    const expected = editingBase && { ...editingBase };
+    const controlStates = [...caseForm.elements].map(input => [input, input.disabled]);
+    $("case-save-status").textContent = "";
+    controlStates.forEach(([input]) => { input.disabled = true; });
+    savingCase = true;
     setBusy(button, true);
     try {
-      if (editingKey) await update(ref(database, `casos/${editingKey}`), fullData);
-      else {
-        fullData.criadoEm = new Date().toISOString();
-        await push(ref(database, "casos"), fullData);
+      if (!await userCanWrite(uid)) {
+        if (auth.currentUser?.uid === uid && authEpoch === epoch) { $("case-save-status").textContent = "Seu acesso de escrita foi revogado. Suas alterações continuam no formulário."; notify($("case-save-status").textContent, "warning"); }
+        return;
       }
-      notify(editingKey ? "Registro atualizado." : "Novo caso registrado.", "success");
+      const records = await readSavedCases();
+      if (auth.currentUser?.uid !== uid || authEpoch !== epoch) return;
+      if (hasDuplicate(records, fullData.numeroProntuario, key)) {
+        $("case-save-status").textContent = "Este prontuário já está cadastrado. Abra o caso existente para atualizar.";
+        notify("Este prontuário já está cadastrado. Abra o caso existente para atualizar.", "warning"); return;
+      }
+      const target = key || await caseKey(fullData.numeroProntuario);
+      const timestamp = new Date().toISOString();
+      const patch = { ...fullData, atualizadoEm: timestamp, atualizadoPor: uid };
+      const result = await runTransaction(ref(database, `casos/${target}`), current => {
+        if (auth.currentUser?.uid !== uid || authEpoch !== epoch || !permissions.canWriteCases) return undefined;
+        return key ? caseReplacement(current, expected, patch, Object.keys(fieldMap))
+          : current === null ? { ...patch, criadoEm: timestamp, criadoPor: uid, origemCadastro: 'manual' } : undefined;
+      }, { applyLocally: false });
+      if (auth.currentUser?.uid !== uid || authEpoch !== epoch) return;
+      if (!result.committed) {
+        const message = key ? "O caso foi alterado por outra pessoa. Suas alterações continuam no formulário. Confira o registro atualizado antes de tentar novamente."
+          : "Este prontuário acabou de ser cadastrado por outra pessoa. Abra o caso existente.";
+        $("case-save-status").textContent = message; notify(message, "warning"); return;
+      }
+      notify(key ? "Registro atualizado." : "Novo caso registrado.", "success");
       caseDraft = null; toggleView("list", true);
-    } catch (error) { notify(firebaseMessage(error), "danger"); }
-    finally { setBusy(button, false); }
+    } catch (error) { if (auth.currentUser?.uid === uid && authEpoch === epoch) { $("case-save-status").textContent = firebaseMessage(error); notify(firebaseMessage(error), "danger"); } }
+    finally { savingCase = false; controlStates.forEach(([input, disabled]) => { input.disabled = disabled; }); setBusy(button, false); }
   });
   $("btnSalvarCaso").type = "submit";
 
@@ -288,6 +321,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!canLeaveCase()) return;
     const record = cases.find(item => item.key === key); if (!record) return;
     editingKey = key;
+    editingBase = { ...(record.rawData || record.data) };
+    $("case-save-status").textContent = "";
+    $("numero-prontuario").readOnly = true;
+    $("numero-prontuario").title = "O número identifica o prontuário e não é alterado nesta ficha. Para corrigir a numeração, solicite revisão administrativa.";
     Object.entries(fieldMap).forEach(([field,id]) => {
       const input = $(id), value = record.data[field] || '';
       input.querySelectorAll?.('[data-import-option]').forEach(option=>option.remove());
@@ -300,7 +337,18 @@ document.addEventListener("DOMContentLoaded", () => {
     $("form-tabs").querySelector('[data-bs-target="#tab1"]')?.click(); caseDraft=caseSnapshot(); toggleView('form',true);
   }
   async function userCanWrite(uid) {
-    return auth.currentUser?.uid === uid && permissions.canWriteCases;
+    if (auth.currentUser?.uid !== uid) return false;
+    const epoch = authEpoch;
+    const access = (await get(ref(database, `access/${uid}`))).val();
+    if (auth.currentUser?.uid !== uid || authEpoch !== epoch) return false;
+    permissions = permissionsForAccess(access);
+    return permissions.canWriteCases;
+  }
+  async function readSavedCases() {
+    const snapshot = await get(ref(database, "casos"));
+    const records = [];
+    snapshot.forEach(child => { const data = child.val(); if (data?.numeroProntuario) records.push({ key: child.key, data }); });
+    return records;
   }
   const workflows = setupWorkflows({getCases:()=>cases,getUser:()=>auth.currentUser,canWrite:userCanWrite,openCase:editCase,notify,navigate:toggleView,
     saveActivity: async ({caseKey,field,value,expected,uid}) => {
@@ -337,22 +385,22 @@ document.addEventListener("DOMContentLoaded", () => {
     dadosPlanilha: readableSnapshot(data.dadosPlanilha), historicoPlanilha: readableSnapshot(data.historicoPlanilha)
   })), notify });
   const importer = setupImport({
+    notify,
     getUser: () => auth.currentUser,
-    getPermission: async uid => auth.currentUser?.uid === uid && permissions.canImport,
+    getPermission: async uid => await userCanWrite(uid) && permissions.canImport,
     getExisting: async () => {
       const snapshot = await get(ref(database, "casos"));
       const records = []; snapshot.forEach(child => records.push(child.val())); return records;
     },
     createCase: async (data, uid) => {
+      const epoch = authEpoch;
       if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
-      if (!globalThis.crypto?.subtle) throw new Error("Este navegador não oferece criptografia segura para concluir a importação.");
-      const identity = data.numeroProntuario.normalize("NFKC").trim().toUpperCase();
-      const digestBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity));
-      const digest = [...new Uint8Array(digestBytes)].map(byte => byte.toString(16).padStart(2, "0")).join("");
-      if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
+      if (hasDuplicate(await readSavedCases(), data.numeroProntuario)) return false;
+      const target = await caseKey(data.numeroProntuario);
+      if (auth.currentUser?.uid !== uid || authEpoch !== epoch || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
       const timestamp = new Date().toISOString();
-      const result = await runTransaction(ref(database, `casos/import_${digest}`), current => current === null
-        ? { ...data, criadoEm: timestamp, atualizadoEm: timestamp }
+      const result = await runTransaction(ref(database, `casos/${target}`), current => auth.currentUser?.uid === uid && authEpoch === epoch && permissions.canImport && current === null
+        ? { ...data, criadoEm: timestamp, atualizadoEm: timestamp, criadoPor: uid, atualizadoPor: uid, origemCadastro: 'planilha' }
         : undefined, { applyLocally: false });
       if (auth.currentUser?.uid !== uid) throw new Error("Sessão encerrada");
       return result.committed;
@@ -372,6 +420,8 @@ document.addEventListener("DOMContentLoaded", () => {
       caseDraft = null;
       workflows.reset();
       editingKey = null;
+      editingBase = null;
+      $("case-save-status").textContent = "";
       page = 1;
       caseForm.reset();
       violenceForm.fill({});
@@ -419,7 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cases = [];
       snapshot.forEach((child) => {
         const data = child.val();
-        if (data && data.numeroProntuario) cases.push({ key: child.key, data: resolveViolenceData(data) });
+        if (data && data.numeroProntuario) cases.push({ key: child.key, rawData: data, data: resolveViolenceData(data) });
       });
       const selectedYear = $("filtroAno").value;
       const years = availableYears(cases);
@@ -429,7 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
       syncViolenceOptions();
       render();
     }, (error) => {
-      cases = []; editingKey = null; caseDraft = null; caseForm.reset(); violenceForm.fill({});
+      cases = []; editingKey = null; editingBase = null; caseDraft = null; caseForm.reset(); violenceForm.fill({});
       workflows.reset(); toggleView("list", true); render(); notify(firebaseMessage(error), "danger");
     });
   }
@@ -463,4 +513,3 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   initializeSession();
 });
-

@@ -1,5 +1,8 @@
 // Pure conversion: no network, storage, HTML or spreadsheet evaluation.
+import { caseIdentity } from './case-save.js?v=20261015.3';
 export const normalize = value => String(value ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
+// Keep exact legacy identifiers for linking imported narratives. Duplicate
+// checks use caseIdentity below, without merging or rewriting history evidence.
 export const identity = value => String(value ?? '').normalize('NFKC').trim().toUpperCase();
 export function readableSnapshot(value) {
   if (!value) return '';
@@ -118,14 +121,14 @@ export function prepareImport(book) {
   return { plans, unmatchedHistory };
 }
 export function classifyPlans(plans, existing = []) {
-  const known = new Set(existing.map(row => identity(row?.numeroProntuario)).filter(Boolean));
+  const known = new Set(existing.map(row => caseIdentity(row?.numeroProntuario)).filter(Boolean));
   const counts = new Map();
   for (const plan of plans) {
-    const id = identity(plan.data.numeroProntuario);
+    const id = caseIdentity(plan.data.numeroProntuario);
     if (id) counts.set(id, (counts.get(id) || 0) + 1);
   }
   return plans.map(plan => {
-    const id = identity(plan.data.numeroProntuario);
+    const id = caseIdentity(plan.data.numeroProntuario);
     const errors = validateRecord(plan.data, plan.sourceErrors);
     if (id && counts.get(id) > 1) errors.push('Prontuário repetido na planilha. Corrija antes de importar.');
     return { ...plan, errors, state: known.has(id) ? 'existing' : errors.length ? 'invalid' : 'ready' };

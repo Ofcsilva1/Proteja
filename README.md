@@ -50,7 +50,8 @@ Os testes simulam todos os serviços externos e verificam inicialização, limpe
 
 ## Segurança e apresentação comercial
 
+A versão 20261015.3 protege a edição da ficha contra alterações concorrentes, preserva o rascunho em conflitos e usa uma chave compartilhada entre novos cadastros manuais e importações para evitar repetição do mesmo prontuário nos fluxos desta versão. Identificadores legados são preservados. A ficha não renumera casos existentes; correções são administrativas. Consulte [operação, limitações, backup e entrega ao TI](docs/OPERACAO-E-RECUPERACAO.md). Consulta filtrada, auditoria histórica confiável, capacidade sob carga e backup automático ainda precisam de implantação e homologação próprias.
+
 Consulte os [critérios de segurança](docs/SECURITY-REVIEW.md) e o [caminho de comercialização](docs/COMMERCIAL-READINESS.md). As regras devem ser homologadas no console Firebase antes do uso com dados reais: incorporar este PR não modifica as regras do banco.
 
 database.rules.lockdown.json fecha o acesso de todos os clientes sem excluir registros. database.rules.example.json propõe acesso por UID para homologação e retomada controlada. Nenhum desses arquivos é implantado automaticamente. Compare os dados legados, demais caminhos e UIDs antes de liberar o acesso.
-

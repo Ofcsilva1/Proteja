@@ -1,43 +1,19 @@
 # Cargos e permissões do Proteja
 
-## Matriz proposta
+## Comportamento do aplicativo
 
-| Cargo | Ler casos | Criar/editar casos | Importar planilha |
-|---|---:|---:|---:|
-| administrador | Sim | Sim | Sim |
-| coordenador | Sim | Sim | Não |
-| tecnico | Sim | Sim | Não |
-| consulta | Sim | Não | Não |
+Contas precisam de `access/{uid}/active: true` e de um cargo reconhecido. Administrador, coordenador e técnico podem criar e editar casos; só o administrador pode abrir e confirmar o fluxo de importação. Consulta permite leitura e impede edição na interface. A autorização efetiva depende das regras publicadas. O campo legado `canWrite` não determina a permissão nesta versão; não use esse campo para revogar acesso. Desative `active` ou atribua o cargo adequado.
 
-Coordenador recebe a mesma permissão de criar e editar casos que técnico nesta primeira versão; a importação fica reservada ao administrador. A lista de casos continua compartilhada entre os cargos autorizados, conforme a operação descrita pela equipe.
+O perfil é provisionado pela administração do Firebase, após criar a conta no Authentication. Clientes não podem modificar seu perfil nas regras de exemplo. Antes de gravar, o aplicativo relê o perfil, além das verificações autoritativas do banco.
 
-## Cadastro do perfil
+## Consulta filtrada ainda pendente
 
-Depois de criar a conta em Firebase Authentication, use o UID da conta como chave em `access/{uid}`. Mantenha `active: true` e acrescente um campo texto `role` com um dos valores exatos acima. Exemplo estrutural:
+O aplicativo ainda carrega casos completos. Quem tem permissão para ler `/casos` recebe todos os campos, mesmo que não possa alterá-los. Não apresente esse cargo como acesso anonimizado. O modelo `database.rules.example.json` nega essa leitura a consulta e deve ser homologado antes de publicação; ele não é implantado pelo GitHub e pode diferir do ambiente ativo.
 
-```json
-{
-  "active": true,
-  "role": "tecnico"
-}
-```
+Permissões por cargo podem ser implementadas no Spark. Uma visão limitada precisa de dados separados e de um processo confiável de atualização; regras não removem seletivamente campos de uma leitura já autorizada no nó pai. A opção com Cloud Functions requer Blaze para implantação. A implementação da visão filtrada e a escolha dos atributos liberados permanecem etapas futuras.
 
-O aplicativo não oferece auto cadastro de cargos. As regras do exemplo mantêm `access/{uid}` sem escrita pelo cliente, para impedir que uma pessoa altere o próprio cargo. A concessão do perfil é feita pela administração do projeto Firebase.
+## Gravação e importação
 
-## Ordem de homologação e ativação
+A importação grava diretamente no Realtime Database, sem chamar Cloud Functions. Novos registros usam `case_{sha256}` compartilhado pelo cadastro manual; casos legados `import_{hash}` permanecem onde estão. O modelo de regras reserva criação declarada como planilha ao administrador e permite atualização dos casos importados já existentes aos profissionais com escrita. Isso não constitui controle de volume ou prova criptográfica da origem de uma gravação manual.
 
-1. Faça backup das regras atuais e registre, em canal privado, os UIDs autorizados e os cargos aprovados. Não copie casos reais para o ambiente de testes.
-2. Atribua os campos `role` aos usuários ativos em uma janela de manutenção, mantendo os campos atuais até validar a migração. Contas sem perfil reconhecido ficam sem acesso.
-3. Inicie Authentication, Realtime Database e Functions Emulator com o projeto de demonstração `demo-proteja`. Use apenas contas e registros fictícios.
-4. Teste leitura para os quatro cargos; criação/edição para administrador, coordenador e técnico; bloqueio de escrita para consulta; bloqueio da chamada de importação para todos exceto administrador; validação de dados inválidos; e conta inativa/sem cargo.
-5. O projeto usa GitHub Pages para a interface. O backend callable e as regras precisam ser implantados separadamente no Firebase antes de publicar o frontend que os chama.
-6. A função Cloud Functions exige plano Blaze e vinculação de faturamento. Não faça upgrade sem revisar custos, alertas e limites. O código não faz upgrade nem implanta serviços.
-7. Só depois da aprovação e dos testes, implante a função, em seguida as regras e, por último, mescle/publique a interface. Mantenha o backup disponível para reversão.
-
-## Limite atual da importação
-
-A interface só mostra o fluxo de importação ao administrador, mas isso não é uma barreira de segurança suficiente. Por isso, o site envia cada registro à função `importarCaso`, que confere no servidor se a conta ativa tem cargo `administrador`, valida o registro e grava com chave idempotente. Não implante o frontend sem implantar e testar a função.
-
-## Ambiente atual
-
-Este documento descreve uma proposta no repositório. Alterar estes arquivos ou mesclar uma branch não altera as regras, perfis, dados ou faturamento do Firebase. As regras ativas devem ser conferidas separadamente no Console Firebase.
+Consulte [operação e recuperação](OPERACAO-E-RECUPERACAO.md) para limites de unicidade, auditoria, homologação, backup e entrega ao TI. Não é necessário implantar Functions nem ativar Blaze para aplicar as melhorias locais desta versão. Publicar regras exige validação separada e uma decisão explícita sobre o acesso dos perfis de consulta existentes.
