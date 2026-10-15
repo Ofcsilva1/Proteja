@@ -9,7 +9,7 @@
       }
     },
     "casos": {
-      ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico' || root.child('access').child(auth.uid).child('role').val() === 'consulta')",
+      ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')",
       "$caseId": {
         ".write": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico') && newData.exists()",
         ".validate": "newData.hasChildren(['numeroProntuario', 'dataEntrada'])",
@@ -26,6 +26,11 @@
           ".validate": "newData.isString() && newData.val().length <= 20000"
         }
       }
+    },
+    "consultaCasos": {
+      ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico' || root.child('access').child(auth.uid).child('role').val() === 'consulta')",
+      ".write": false
     }
   }
 }
+
