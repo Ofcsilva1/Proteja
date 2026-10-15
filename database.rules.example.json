@@ -11,7 +11,7 @@
     "casos": {
       ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico' || root.child('access').child(auth.uid).child('role').val() === 'consulta')",
       "$caseId": {
-        ".write": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico') && newData.exists()",
+        ".write": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico') && newData.exists() && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || !$caseId.matches(/^import_[0-9a-f]{64}$/))",
         ".validate": "newData.hasChildren(['numeroProntuario', 'dataEntrada'])",
         "numeroProntuario": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
