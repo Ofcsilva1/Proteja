@@ -1,12 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-import { setupExports } from "./exports.js";
-import { setupImport, appendImportedDetails } from "./import-ui.js";
-import { identity, readableSnapshot } from "./import-core.js";
-import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js";
-import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js";
-import { setupViolenceForm } from "./violence-form.js";
-import { setupWorkflows } from "./workflow-ui.js";
-import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js";
+import { setupExports } from "./exports.js?v=20261014.1";
+import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261014.1";
+import { identity, readableSnapshot } from "./import-core.js?v=20261014.1";
+import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
+import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
+import { setupViolenceForm } from "./violence-form.js?v=20261014.1";
+import { setupWorkflows } from "./workflow-ui.js?v=20261014.1";
+import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js?v=20261014.1";
 import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -403,21 +403,30 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function initializeSession() {
+    let preparationTimeout;
     try {
       // Clear any legacy persisted session before exposing a restored user.
-      await setPersistence(auth, inMemoryPersistence);
-      await signOut(auth);
+      await Promise.race([
+        (async () => { await setPersistence(auth, inMemoryPersistence); await signOut(auth); })(),
+        new Promise((_, reject) => { preparationTimeout = window.setTimeout(() => reject(new Error('preparation-timeout')), 15000); })
+      ]);
       onAuthStateChanged(auth, handleAuthState, () => {
         authStatus.textContent = "Não foi possível verificar sua sessão. Recarregue a página.";
       });
       authReady = true;
       document.documentElement.dataset.authReady = "true";
+      delete document.documentElement.dataset.authFailed;
       loginButton.disabled = false;
       loginButton.textContent = "Acessar sistema";
       authStatus.textContent = "";
+      $("btnReloadAuth").hidden = true;
     } catch {
-      authStatus.textContent = "Não foi possível preparar o acesso. Confira a conexão e recarregue a página.";
+      document.documentElement.dataset.authFailed = "true";
+      loginButton.textContent = "Acesso indisponível — recarregue";
+      authStatus.textContent = "Não foi possível preparar o acesso. Clique em Recarregar acesso. Sua internet pode estar funcionando; o serviço de autenticação ou o carregamento da página pode ter falhado.";
       $("btnReloadAuth").hidden = false;
+    } finally {
+      window.clearTimeout(preparationTimeout);
     }
   }
   initializeSession();

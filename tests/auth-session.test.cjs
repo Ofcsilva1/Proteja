@@ -61,6 +61,10 @@ async function fixture(options = {}) {
     return route.fulfill({ contentType: target.pathname.endsWith(".js") ? "text/javascript" : "text/css", body: "" });
   });
   const page = await context.newPage();
+  if(options.fastPreparationTimeout) await page.addInitScript(() => {
+    const original = window.setTimeout.bind(window);
+    window.setTimeout = (fn, delay, ...args) => original(fn, delay === 15000 ? 100 : delay, ...args);
+  });
   page.setDefaultTimeout(12000);
   page.on("pageerror", error => console.error("Fixture page error:", error.message));
   await page.goto("https://proteja.test/", { waitUntil: "domcontentloaded" });
@@ -144,6 +148,24 @@ test("sign-out clears cases/form and ignores a late database callback", async ()
     assert.equal(await page.locator("#summary-total").textContent(), "0");
     assert.equal(await page.evaluate(() => window.__authTest.unsubscribed), 1);
   } finally { await context.close(); }
+});
+
+test("preparation timeout stays closed even when Firebase finishes late",async()=>{
+  const {page,context}=await fixture({initBlocked:true,fastPreparationTimeout:true});
+  try {
+    await page.waitForFunction(()=>document.documentElement.dataset.authFailed==='true');
+    assert.equal(await page.locator('#btnLogin').isDisabled(),true);
+    assert.match(await page.locator('#auth-status').textContent(),/internet pode estar funcionando/);
+    assert.equal(await page.locator('#btnReloadAuth').isVisible(),true);
+    await page.evaluate(()=>window.__authTest.releaseInit());
+    await page.waitForTimeout(150);
+    assert.notEqual(await page.evaluate(()=>document.documentElement.dataset.authReady),'true');
+    assert.equal(await page.locator('#app-wrapper').isVisible(),false);
+    assert.equal(await page.evaluate(()=>window.__authTest.subscriptions),0);
+    await page.locator('#btnReloadAuth').click();
+    await page.waitForURL(url=>url.searchParams.has('atualizar'));
+    assert.equal(new URL(page.url()).pathname,'/');
+  }finally{await context.close();}
 });
 
 test("initialization failure leaves login disabled and shows recovery", async () => {
@@ -307,6 +329,24 @@ test('single case search matches exact numbers and also CRIAD, owner and technic
     }
     await page.locator('#btnLimparFiltros').click();
     assert.equal(await page.locator('#case-table tbody tr:not(.details-row)').count(),3);
+  }finally{await context.close();}
+});
+
+test('long names reserve arrow space and show their complete text in both themes',async()=>{
+  const fullName='Pessoa fictícia com nome longo para conferir a seta do seletor';
+  const {page,context}=await fixture({workflows:true,workflowCases:[{key:'workflow-case',data:{numeroProntuario:'24',dataEntrada:'2026-01-01',situacaoAtual:'ativo',nomeCriad:fullName}}]});
+  try {
+    await workflowLogin(page);await page.locator('#nav-agenda').click();
+    await page.locator('#agenda-case').selectOption('workflow-case');
+    for(const theme of ['light','dark']) {
+      await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+      if(theme==='dark') await page.waitForFunction(()=>getComputedStyle(document.getElementById('agenda-case')).backgroundColor==='rgb(36, 52, 78)');
+      const style=await page.locator('#agenda-case').evaluate(el=>({padding:parseFloat(getComputedStyle(el).paddingRight),background:getComputedStyle(el).backgroundColor,title:el.title}));
+      assert.ok(style.padding>=48);assert.ok(style.title.includes(fullName));
+      assert.equal(await page.locator('#agenda-case + .workflow-selected-case').textContent(),'24 — '+fullName);
+      if(theme==='dark')assert.equal(style.background,'rgb(36, 52, 78)');
+    }
+    assert.ok((await page.locator('.app-version').first().textContent()).includes('20261014.1'));
   }finally{await context.close();}
 });
 

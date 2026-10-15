@@ -1,5 +1,5 @@
-import { dateValue } from './import-core.js';
-import { exactProntuario } from './case-list.js';
+import { dateValue } from './import-core.js?v=20261014.1';
+import { exactProntuario } from './case-list.js?v=20261014.1';
 
 export const APPOINTMENT_STATUS = { agendado: 'Agendado', realizado: 'Realizado', nao_compareceu: 'Não compareceu', cancelado: 'Cancelado' };
 export const TASK_STATUS = { aberta: 'Aberta', em_andamento: 'Em andamento', concluida: 'Concluída', cancelada: 'Cancelada' };

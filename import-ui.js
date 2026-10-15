@@ -1,4 +1,4 @@
-import { prepareImport, classifyPlans, STATUS } from './import-core.js';
+import { prepareImport, classifyPlans, STATUS } from './import-core.js?v=20261014.1';
 
 export function setupImport({ getUser, getExisting, getPermission, createCase }) {
   const $ = id => document.getElementById(id);
@@ -81,7 +81,7 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
     try {
       const buffer = await selected.arrayBuffer();
       if (request !== generation || getUser()?.uid !== owner) return;
-      worker = new Worker(new URL('./import-worker.js', import.meta.url));
+      worker = new Worker(new URL('./import-worker.js?v=20261014.1', import.meta.url));
       timer = setTimeout(() => { finishWorker(); status('A leitura demorou demais. Confira o arquivo e tente novamente.'); }, 45000);
       worker.onerror = () => { finishWorker(); status('Não foi possível carregar o leitor. Recarregue a página e tente novamente.'); };
       worker.onmessage = async ({ data }) => {

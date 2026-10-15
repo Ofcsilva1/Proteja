@@ -1,4 +1,4 @@
-import { APPOINTMENT_STATUS, TASK_STATUS, APPOINTMENT_TYPES, TASK_TYPES, PREFIX, todayISO, strictDate, collectActivities, filterActivities, isLate, buildActivity } from './workflow-core.js';
+import { APPOINTMENT_STATUS, TASK_STATUS, APPOINTMENT_TYPES, TASK_TYPES, PREFIX, todayISO, strictDate, collectActivities, filterActivities, isLate, buildActivity } from './workflow-core.js?v=20261014.1';
 
 const PAGE_SIZE = 10;
 const textNode = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
@@ -51,6 +51,16 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     const records = [...getCases()].sort((a,b)=>collator.compare(String(a.data.numeroProntuario),String(b.data.numeroProntuario)));
     select.replaceChildren(new Option(includeAll ? 'Todos os prontuários' : 'Selecione um prontuário', ''), ...records.map(({ key, data })=>new Option(`${data.numeroProntuario}${data.nomeCriad ? ' — '+data.nomeCriad : ''}`,key)));
     select.value = records.some(c=>c.key===selected) ? selected : '';
+    let caption=select.parentElement.querySelector('.workflow-selected-case');
+    if(!caption) {
+      caption=textNode('small','','workflow-selected-case');select.after(caption);
+      select.addEventListener('change',()=>{
+        const label=select.selectedOptions[0]?.textContent||'';
+        select.title=label;caption.textContent=label;caption.hidden=!select.value||label.length<=30;
+      });
+    }
+    const label=select.selectedOptions[0]?.textContent||'';
+    select.title=label;caption.textContent=label;caption.hidden=!select.value||label.length<=30;
   }
   function filters(kind) {
     return { caseKey: $(`${kind}-case`).value, responsavel: $(`${kind}-owner`).value,
