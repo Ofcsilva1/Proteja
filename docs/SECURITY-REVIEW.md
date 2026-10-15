@@ -1,52 +1,30 @@
-# Homologação de segurança do PROTEJA
+# Revisão de segurança — visão de consulta
 
-Este documento descreve controles e critérios de liberação. Não certifica a segurança do projeto Firebase nem divulga detalhes de sua configuração operacional. O ambiente deve ser validado pelo responsável antes de usar dados reais.
+Esta revisão prepara uma separação de dados por cargo para homologação. Não certifica o ambiente Firebase nem representa implantação em produção.
 
-## Controles no aplicativo
+## Alterações propostas
 
-- Sessão apenas em memória, com novo login ao abrir/recarregar e encerramento de sessão herdada antes do acesso.
-- Formulário desabilitado durante a inicialização, progresso e erros visíveis, bloqueio de requisições duplicadas.
-- Limpeza de registros, formulário e filtros ao sair, interrupção da assinatura e descarte de callbacks atrasados.
-- Cadastro de contas feito pela administração, sem autosserviço na interface.
-- Dados renderizados como texto e exportações com proteção contra HTML/fórmulas.
+- Administrador, coordenador e técnico continuam lendo `/casos` completos.
+- O perfil consulta não recebe leitura de `/casos`. Lê somente `/consultaCasos`, projeção gerada no servidor com código aleatório e os campos aprovados em `docs/RBAC.md`.
+- `/consultaIndex` não tem permissão de leitura ou escrita para clientes.
+- Regras negam escrita cliente em `/consultaCasos`; Cloud Functions usam Admin SDK para manter a projeção.
+- Os cartões e os totais de violência são calculados por callable autenticada e devolvem somente contagens agregadas.
+- A interface do perfil consulta renderiza e exporta apenas a projeção. Detalhes de casos, filtros de violência, agenda, pendências e importação ficam indisponíveis.
+- A função de importação continua limitada ao administrador.
 
-Retirar o cadastro da interface não impede criação de contas pela API do Firebase. O banco deve negar casos a qualquer UID não autorizado. Desmarcar uma coluna de exportação também não é controle de acesso: quem recebeu o registro completo pode obter seus campos.
+## Pontos de atenção
 
-## Regras e implantação controlada
+- O administrador precisa executar **Preparar visão de consulta** uma vez após implantar as funções para criar as projeções legadas. Sem esse passo, a tabela de consulta fica vazia.
+- Implantar a interface antes das regras e das funções deixa a experiência incompleta. A sequência documentada em `docs/RBAC.md` deve ser seguida.
+- A função de indicadores lê todos os casos do servidor a cada solicitação. Monitorar duração e custo; para bases maiores, manter os agregados de forma incremental.
+- A projeção permite idade exata e datas completas, conforme decisão do responsável. Esses dados podem permitir reidentificação quando cruzados com contexto externo; a instituição deve limitar o acesso aos usuários de consulta autorizados.
+- A função de gatilho tem entrega eventual. A tabela consultiva pode levar alguns segundos para refletir uma gravação recente.
+- A projeção inclui campos em texto livre aprovados (`conselhoTutelar` e `origemCaso`) com tamanho limitado. Antes do uso, confirmar que a planilha não coloca nomes, telefone ou narrativa nessas colunas.
+- As regras de exemplo precisam ser comparadas com as regras ativas. O deploy deste modelo não foi executado.
 
-database.rules.lockdown.json bloqueia todos os clientes, inclusive usuários legítimos, sem excluir registros. Console/Admin SDK continuam sujeitos às permissões administrativas. Use somente como intervenção controlada, sem implantação automática.
+## Homologação obrigatória
 
-database.rules.example.json é uma proposta para homologação de uma única instituição: leitores precisam de access/{uid}/active igual a true; editores também precisam de canWrite igual a true. Clientes não podem modificar a lista de acesso nem excluir casos. A proposta não fornece isolamento entre instituições nem restrições por campo.
+Usar dados fictícios no Realtime Database Emulator e cobrir os quatro cargos, conta inativa, sessão sem cargo, leitura de cada caminho, tentativas de escrita, importação, geração inicial, atualização e exclusão de projeção, indicadores agregados e exportações. Não liberar dados reais até concluir a validação e revisar os registros de auditoria.
 
-Antes de publicar qualquer modelo:
-
-1. Comparar as regras atuais, preservar evidências e conferir os demais caminhos.
-2. Validar uma lista limpa de UIDs no Authentication e provisionar autorizações administrativamente.
-3. Testar visitante, conta não autorizada, leitor, editor, revogação e tentativa de elevar a própria permissão.
-4. Conferir os dados legados: campos obrigatórios, datas, tipos, comprimentos e extras podem exigir ajuste do modelo.
-5. Testar no Emulator ou Rules Playground antes da retomada controlada.
-
-Os modelos não foram executados no Emulator nesta revisão nem publicados no Firebase. Incorporar o PR não altera as regras do banco.
-
-## Controles necessários para dados reais
-
-Homologar permissões por função/unidade/campo, auditoria confiável com data do servidor, backup e restauração, retenção, gestão de contas, MFA quando aplicável, limites de tentativas, App Check, domínios, restrições de chave, HTTPS e cabeçalhos. Não registrar conteúdo dos prontuários em logs técnicos.
-
-Inventariar as dependências CDN e verificar vulnerabilidades/integração antes de atualizações. A configuração Firebase no navegador identifica o projeto e não é uma chave administrativa; deve ter restrições apropriadas e não ser reutilizada para outras APIs.
-
-A instituição deve definir finalidade, base legal, acesso, retenção, responsabilidades e resposta a incidentes, considerando os dados de crianças/adolescentes e relatos sensíveis. O guia da ANPD é uma referência, não uma declaração de conformidade.
-
-## Validação desta alteração
-
-Os sete testes automatizados de login passaram com todas as requisições externas simuladas: inicialização, sessão herdada, login explícito, recarregamento, conexão lenta sem duplicação, erro de senha, limpeza ao sair, callbacks atrasados e falha de carregamento.
-
-Os testes de exportação com registros fictícios passaram. O PDF com grade de 15 colunas foi renderizado e inspecionado; CSV/XLS/PDF foram lidos para verificar cabeçalhos, valores, seleção, filtros e proteções. A sintaxe JavaScript e JSON dos modelos passou. Esses testes não demonstram a segurança das regras do ambiente real.
-
-## Referências
-
-- [Persistência de sessão no Firebase](https://firebase.google.com/docs/auth/web/auth-state-persistence)
-- [Regras do Realtime Database](https://firebase.google.com/docs/database/security)
-- [Condições das regras](https://firebase.google.com/docs/database/security/rules-conditions)
-- [Chaves e restrições do Firebase](https://firebase.google.com/docs/projects/api-keys)
-- [Guia de segurança da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-vf.pdf)
+Este conjunto de mudanças não foi publicado no Firebase ou no GitHub Pages. Nenhum teste foi executado nesta alteração.
 
