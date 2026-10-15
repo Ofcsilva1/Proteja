@@ -3,7 +3,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 import { permissionsForAccess, ROLE } from "./permissions.js?v=20261015.1";
 import { setupExports } from "./exports.js?v=20261014.1";
 import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.1";
-import { identity, readableSnapshot } from "./import-core.js?v=20261014.1";
+import { readableSnapshot } from "./import-core.js?v=20261014.1";
 import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
 import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
 import { setupViolenceForm } from "./violence-form.js?v=20261014.1";
