@@ -1,6 +1,6 @@
-import { prepareImport, classifyPlans, STATUS } from './import-core.js?v=20261014.1';
+import { prepareImport, classifyPlans, STATUS } from './import-core.js?v=20261015.3';
 
-export function setupImport({ getUser, getExisting, getPermission, createCase }) {
+export function setupImport({ getUser, getExisting, getPermission, createCase, notify = () => {} }) {
   const $ = id => document.getElementById(id);
   const dialog = $('import-dialog');
   const file = $('import-file');
@@ -59,7 +59,13 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
   $('btnImport').addEventListener('click', async () => {
     if (busy) return;
     const uid = getUser()?.uid;
-    if (!uid || !await getPermission(uid)) return;
+    const request = generation;
+    if (!uid) return;
+    let allowed;
+    try { allowed = await getPermission(uid); }
+    catch { if (request === generation && getUser()?.uid === uid) notify('Não foi possível conferir seu acesso. Tente abrir a importação novamente.', 'danger'); return; }
+    if (request !== generation || getUser()?.uid !== uid) return;
+    if (!allowed) { notify('A importação está disponível somente para o administrador.', 'warning'); return; }
     reset(); owner = uid;
     stop = false; status('Selecione a planilha otimizada. Nada será gravado antes da confirmação.'); dialog.showModal();
   });
@@ -82,7 +88,7 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
     try {
       const buffer = await selected.arrayBuffer();
       if (request !== generation || getUser()?.uid !== owner) return;
-      worker = new Worker(new URL('./import-worker.js?v=20261014.1', import.meta.url));
+      worker = new Worker(new URL('./import-worker.js?v=20261015.3', import.meta.url));
       timer = setTimeout(() => { finishWorker(); status('A leitura demorou demais. Confira o arquivo e tente novamente.'); }, 45000);
       worker.onerror = () => { finishWorker(); status('Não foi possível carregar o leitor. Recarregue a página e tente novamente.'); };
       worker.onmessage = async ({ data }) => {

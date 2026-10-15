@@ -1,5 +1,5 @@
-import { VIOLENCE_TYPES, SEXUAL_TYPES, splitViolence } from './violence.js?v=20261014.1';
-import { normalize } from './import-core.js?v=20261014.1';
+import { VIOLENCE_TYPES, SEXUAL_TYPES, splitViolence } from './violence.js?v=20261015.3';
+import { normalize } from './import-core.js?v=20261015.3';
 
 export function setupViolenceForm() {
   const groups = [

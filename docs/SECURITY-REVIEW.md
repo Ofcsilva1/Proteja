@@ -16,7 +16,7 @@ Retirar o cadastro da interface não impede criação de contas pela API do Fire
 
 database.rules.lockdown.json bloqueia todos os clientes, inclusive usuários legítimos, sem excluir registros. Console/Admin SDK continuam sujeitos às permissões administrativas. Use somente como intervenção controlada, sem implantação automática.
 
-database.rules.example.json é uma proposta para homologação de uma única instituição: leitores precisam de access/{uid}/active igual a true; editores também precisam de canWrite igual a true. Clientes não podem modificar a lista de acesso nem excluir casos. A proposta não fornece isolamento entre instituições nem restrições por campo.
+database.rules.example.json é uma proposta para homologação de uma única instituição: exige access/{uid}/active igual a true e cargo administrador, coordenador ou tecnico. O campo legado canWrite não determina o acesso. Consulta não recebe leitura do nó bruto neste exemplo, embora a interface ainda suporte consulta completa se as regras ativas permitirem. Clientes não podem modificar a lista de acesso nem excluir casos. Técnicos podem atualizar casos importados existentes; a criação declarada como planilha é reservada ao administrador. A proposta não fornece isolamento entre instituições nem restrições por campo. Veja [limites da versão](OPERACAO-E-RECUPERACAO.md).
 
 Antes de publicar qualquer modelo:
 
@@ -49,4 +49,3 @@ Os testes de exportação com registros fictícios passaram. O PDF com grade de 
 - [Condições das regras](https://firebase.google.com/docs/database/security/rules-conditions)
 - [Chaves e restrições do Firebase](https://firebase.google.com/docs/projects/api-keys)
 - [Guia de segurança da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-vf.pdf)
-

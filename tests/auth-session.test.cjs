@@ -30,8 +30,8 @@ const authModule = [
 const databaseModule = [
   'const opts=window.__fixtureOptions;const stored={};',
   'const workflowCases=opts.workflows?(opts.workflowCases||[{key:"workflow-case",data:{numeroProntuario:"0005",dataEntrada:"2026-01-01",situacaoAtual:"ativo",nomeCriad:"Pessoa fictícia",datasTexto:"Histórico fictício com data incompleta: 01/02",outrasPendencias:"Anotação fictícia preservada",tecnicosReferencia:"Equipe fictícia"}}]):null;',
-  'export const get=async p=>({val:()=>({active:true,canWrite:!opts.readOnly}),forEach:fn=>[...(opts.existing||[]),...Object.values(stored)].forEach(v=>fn({val:()=>v}))});',
-  'export const runTransaction=async(p,fn)=>{const d=window.__authTest;if(workflowCases){d.workflowAttempts=(d.workflowAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(d.failWorkflow){d.failWorkflow=false;throw {code:"PERMISSION_DENIED"};}const [,caseKey,field]=p.split("/");const row=workflowCases.find(c=>c.key===caseKey);if(!row)throw {code:"PERMISSION_DENIED"};if(d.forceConflict&&row.data[field]){const next=JSON.parse(row.data[field]);next.revisao++;next.observacao="Atualizado por outra pessoa fictícia";row.data[field]=JSON.stringify(next);d.forceConflict=false;d.emitCases();}const value=fn(row.data[field]??null);if(value===undefined)return {committed:false};row.data[field]=value;d.workflowWrites=(d.workflowWrites||0)+1;d.emitCases();return {committed:true};}d.importAttempts=(d.importAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(opts.failImportAt===d.importAttempts)throw new Error("fixture");const value=fn(stored[p]??null);if(value===undefined)return {committed:false};stored[p]=value;d.imported=Object.values(stored);return {committed:true};};',
+  'export const get=async p=>({val:()=>({active:true,role:opts.readOnly?"consulta":(opts.role||"administrador"),canWrite:!opts.readOnly}),forEach:fn=>[...(workflowCases||[]).map(c=>({key:c.key,data:c.data})),...(opts.existing||[]).map((data,i)=>({key:"existing-"+i,data})),...Object.entries(stored).map(([key,data])=>({key:key.split("/").pop(),data}))].forEach(c=>fn({key:c.key,val:()=>c.data}))});',
+  'export const runTransaction=async(p,fn)=>{const d=window.__authTest;if(workflowCases){d.workflowAttempts=(d.workflowAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(d.failWorkflow){d.failWorkflow=false;throw {code:"PERMISSION_DENIED"};}const [,caseKey,field]=p.split("/");let row=workflowCases.find(c=>c.key===caseKey);if(!field){if(row&&d.forceCaseConflict){row.data.nomeCriad="Atualização remota fictícia";d.forceCaseConflict=false;d.emitCases();}const value=fn(row?.data??null);if(value===undefined)return {committed:false};if(row)row.data=value;else workflowCases.push({key:caseKey,data:value});d.caseWrites=(d.caseWrites||0)+1;d.emitCases();return {committed:true};}if(!row)throw {code:"PERMISSION_DENIED"};if(d.forceConflict&&row.data[field]){const next=JSON.parse(row.data[field]);next.revisao++;next.observacao="Atualizado por outra pessoa fictícia";row.data[field]=JSON.stringify(next);d.forceConflict=false;d.emitCases();}const value=fn(row.data[field]??null);if(value===undefined)return {committed:false};row.data[field]=value;d.workflowWrites=(d.workflowWrites||0)+1;d.emitCases();return {committed:true};}d.importAttempts=(d.importAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(opts.failImportAt===d.importAttempts)throw new Error("fixture");const value=fn(stored[p]??null);if(value===undefined)return {committed:false};stored[p]=value;d.imported=Object.values(stored);return {committed:true};};',
   'export const getDatabase=()=>({});export const ref=(_db,p)=>p;',
   'export const push=async()=>{window.__authTest.writes=(window.__authTest.writes||0)+1;};export const update=async()=>{window.__authTest.writes=(window.__authTest.writes||0)+1;};',
   'export const onValue=(p,cb)=>{const d=window.__authTest;d.subscriptions++;d.workflowCases=workflowCases;d.setReadOnly=v=>{opts.readOnly=v;};d.emitCases=()=>cb({forEach:fn=>workflowCases?workflowCases.forEach(c=>fn({key:c.key,val:()=>c.data})):fn({key:"fake-key",val:()=>({numeroProntuario:"CASE-01",dataEntrada:"2026-10-14",situacaoAtual:"ativo",nomeCriad:"DADO-FICTICIO",detalheOrigem:"DETALHE-FICTICIO"})})});d.emitCases();return()=>{d.unsubscribed++;};};'
@@ -162,8 +162,7 @@ test("preparation timeout stays closed even when Firebase finishes late",async()
     assert.notEqual(await page.evaluate(()=>document.documentElement.dataset.authReady),'true');
     assert.equal(await page.locator('#app-wrapper').isVisible(),false);
     assert.equal(await page.evaluate(()=>window.__authTest.subscriptions),0);
-    await page.locator('#btnReloadAuth').click();
-    await page.waitForURL(url=>url.searchParams.has('atualizar'));
+    await Promise.all([page.waitForURL(url=>url.searchParams.has('atualizar')),page.locator('#btnReloadAuth').click()]);
     assert.equal(new URL(page.url()).pathname,'/');
   }finally{await context.close();}
 });
@@ -229,7 +228,12 @@ test('preview corrections enable a pending record and require confirmation again
 test('read-only account cannot prepare or submit an import',async()=>{
   const {page,context}=await fixture({readOnly:true,importBook:importBook([importRow('00003')])});
   try{
-    await importPreview(page);await page.waitForFunction(()=>document.getElementById('import-status').textContent.includes('canWrite'));
+    await ready(page);await credentials(page);await page.locator('#btnLogin').click();
+    await page.waitForFunction(()=>!document.getElementById('app-wrapper').hidden);
+    assert.equal(await page.locator('#btnImport').isVisible(),false);
+    await page.evaluate(()=>document.getElementById('btnImport').click());
+    await page.waitForTimeout(100);
+    assert.equal(await page.locator('#import-dialog').isVisible(),false);
     assert.equal(await page.locator('#import-save').isDisabled(),true);
     assert.equal(await page.evaluate(()=>window.__authTest.importAttempts||0),0);
   }finally{await context.close();}
@@ -250,7 +254,7 @@ test('write failure keeps confirmed records and pending rows for retry',async()=
   try{
     await importPreview(page);await page.waitForFunction(()=>document.getElementById('import-summary').textContent.startsWith('2 prontos'));
     await page.locator('#import-confirm').check();await page.locator('#import-save').click();
-    await page.waitForFunction(()=>document.getElementById('import-status').textContent.includes('interrompida por'));
+    await page.waitForFunction(()=>document.getElementById('import-status').textContent.includes('Importação interrompida'));
     assert.equal(await page.evaluate(()=>window.__authTest.imported.length),1);
     assert.match(await page.locator('#import-summary').textContent(),/^1 prontos/);
     await page.locator('#import-confirm').check();await page.locator('#import-save').click();
@@ -346,7 +350,7 @@ test('long names reserve arrow space and show their complete text in both themes
       assert.equal(await page.locator('#agenda-case + .workflow-selected-case').textContent(),'24 — '+fullName);
       if(theme==='dark')assert.equal(style.background,'rgb(36, 52, 78)');
     }
-    assert.ok((await page.locator('.app-version').first().textContent()).includes('20261014.1'));
+    assert.ok((await page.locator('.app-version').first().textContent()).includes('20261015.3'));
   }finally{await context.close();}
 });
 
@@ -458,4 +462,78 @@ test('new navigation protects unsaved case edits and reduced motion disables cou
     page.once('dialog',d=>d.accept());await page.locator('#nav-list').click();await page.locator('#filtroBusca').fill('inexistente');
     assert.equal(await page.evaluate(()=>document.getElementById('summary-total').getAnimations().length),0);
   }finally{await context.close();}
+});
+
+test('case form rejects stale edits, retains the draft and keeps remote content',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    assert.equal(await page.locator('#numero-prontuario').getAttribute('readonly'),'');
+    await page.locator('#detalhe-origem').fill('Rascunho local fictício');
+    await page.evaluate(()=>{window.__authTest.forceCaseConflict=true;});
+    await page.locator('#btnSalvarCaso').click();
+    await page.waitForFunction(()=>document.getElementById('case-save-status').textContent.includes('outra pessoa'));
+    assert.equal(await page.locator('#detalhe-origem').inputValue(),'Rascunho local fictício');
+    assert.equal(await page.locator('#form-section').isVisible(),true);
+    assert.equal(await page.evaluate(()=>window.__authTest.workflowCases[0].data.nomeCriad),'Atualização remota fictícia');
+    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),0);
+  } finally {await context.close();}
+});
+
+test('case edit preserves activity fields and saves once during repeated submission',async()=>{
+  const {page,context}=await fixture({workflows:true,writeDelay:200});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    await page.locator('#detalhe-origem').fill('Detalhe corrigido fictício');
+    await page.evaluate(()=>{window.__authTest.workflowCases[0].data.agenda_preservada='Registro fictício';window.__authTest.emitCases();});
+    await page.locator('#btnSalvarCaso').click();
+    await page.evaluate(()=>document.getElementById('case-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+    await page.waitForFunction(()=>window.__authTest.caseWrites===1);
+    const record=await page.evaluate(()=>window.__authTest.workflowCases[0].data);
+    assert.equal(record.agenda_preservada,'Registro fictício');
+    assert.equal(record.detalheOrigem,'Detalhe corrigido fictício');
+    assert.equal(record.atualizadoPor,'fixture-user');
+  } finally {await context.close();}
+});
+
+test('manual registration blocks a legacy duplicate with different leading zeros',async()=>{
+  const {page,context}=await fixture({workflows:true});
+  try {
+    await workflowLogin(page);await page.locator('#nav-new').click();
+    await page.locator('#numero-prontuario').fill('5');await page.locator('#data-entrada').fill('2026-10-15');
+    await page.locator('#btnSalvarCaso').click();
+    await page.waitForFunction(()=>document.getElementById('case-save-status').textContent.includes('já está cadastrado'));
+    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),0);
+  } finally {await context.close();}
+});
+
+test('sign-out while saving a case cancels the pending transaction',async()=>{
+  const {page,context}=await fixture({workflows:true,writeDelay:300});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    await page.locator('#detalhe-origem').fill('Alteração fictícia');await page.locator('#btnSalvarCaso').click();
+    await page.waitForFunction(()=>window.__authTest.workflowAttempts===1);
+    await page.evaluate(()=>document.getElementById('btnLogout').click());
+    await page.waitForTimeout(450);
+    assert.equal(await page.locator('#app-wrapper').isVisible(),false);
+    assert.equal(await page.locator('#case-save-status').textContent(),'');
+    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),0);
+  } finally {await context.close();}
+});
+
+test('new manual case and import preview share the same prontuario identity',async()=>{
+  const {page,context}=await fixture({workflows:true,importBook:importBook([importRow('00006')])});
+  try {
+    await workflowLogin(page);await page.locator('#nav-new').click();
+    await page.locator('#numero-prontuario').fill('06');await page.locator('#data-entrada').fill('2026-10-15');
+    await page.locator('#btnSalvarCaso').click();await page.waitForFunction(()=>window.__authTest.caseWrites===1);
+    const record=await page.evaluate(()=>window.__authTest.workflowCases.find(c=>c.data.numeroProntuario==='06'));
+    assert.match(record.key,/^case_[0-9a-f]{64}$/);
+    assert.equal(record.data.origemCadastro,'manual');
+    await page.locator('#btnImport').click();
+    await page.locator('#import-file').setInputFiles({name:'teste-ficticio.xlsx',buffer:Buffer.from('mocked worker')});
+    await page.waitForFunction(()=>document.getElementById('import-summary').textContent.includes('1 já existentes'));
+    assert.match(await page.locator('#import-summary').textContent(),/^0 prontos/);
+    assert.equal(await page.locator('#import-save').isDisabled(),true);
+  } finally {await context.close();}
 });
