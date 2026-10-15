@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-functions.js";
 import { permissionsForAccess, ROLE } from "./permissions.js?v=20261015.1";
 import { setupExports } from "./exports.js?v=20261014.1";
-import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261014.1";
+import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.1";
 import { identity, readableSnapshot } from "./import-core.js?v=20261014.1";
 import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
 import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
@@ -24,6 +25,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const functions = getFunctions(app, "us-central1");
+const importCase = httpsCallable(functions, "importarCaso");
 const auth = getAuth(app);
 const PAGE_SIZE = 10;
 let permissions = permissionsForAccess(null);
@@ -344,13 +347,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const records = []; snapshot.forEach(child => records.push(child.val())); return records;
     },
     createCase: async (data, uid) => {
-      const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity(data.numeroProntuario)));
-      const key = 'import_' + Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, '0')).join('');
+      if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
+      const result = await importCase({ data });
       if (auth.currentUser?.uid !== uid) throw new Error("Sessão encerrada");
-      const timestamp = new Date().toISOString();
-      const record = { ...data, criadoEm: timestamp, atualizadoEm: timestamp };
-      const result = await runTransaction(ref(database, `casos/${key}`), current => current === null ? record : undefined, { applyLocally: false });
-      return result.committed;
+      return result.data?.created === true;
     }
   });
 
