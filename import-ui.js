@@ -56,10 +56,11 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
       tr.prepend(source); tr.append(message); $('import-rows').append(tr);
     }
   }
-  $('btnImport').addEventListener('click', () => {
+  $('btnImport').addEventListener('click', async () => {
     if (busy) return;
-    reset(); owner = getUser()?.uid;
-    if (!owner) return;
+    const uid = getUser()?.uid;
+    if (!uid || !await getPermission(uid)) return;
+    reset(); owner = uid;
     stop = false; status('Selecione a planilha otimizada. Nada será gravado antes da confirmação.'); dialog.showModal();
   });
   $('import-close').addEventListener('click', () => {
@@ -92,7 +93,7 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
           const prepared = prepareImport(data);
           const permission = await getPermission(owner);
           if (request !== generation || getUser()?.uid !== owner) return;
-          if (!permission) throw new Error('Sua conta precisa de active e canWrite para importar.');
+          if (!permission) throw new Error('A importação está disponível somente para o administrador.');
           const existing = await getExisting();
           if (request !== generation || getUser()?.uid !== owner) return;
           plans = classifyPlans(prepared.plans, existing); unmatched = prepared.unmatchedHistory; previewed = true;
@@ -112,7 +113,7 @@ export function setupImport({ getUser, getExisting, getPermission, createCase })
     const request = generation;
     setBusy(true); stop = false; report = []; $('import-save').disabled = true;
     try {
-      if (!await getPermission(owner)) throw new Error('Sua conta não tem permissão para importar.');
+      if (!await getPermission(owner)) throw new Error('Somente o administrador pode importar.');
       const existing = await getExisting();
       if (request !== generation || getUser()?.uid !== owner) return;
       existingPreview = existing;
