@@ -1,47 +1,43 @@
 # Cargos e permissões do Proteja
 
-## Matriz de acesso
+## Matriz proposta
 
-| Cargo | Casos completos | Visão de consulta | Criar/editar | Importar |
-|---|---:|---:|---:|---:|
-| administrador | Sim | Sim | Sim | Sim |
-| coordenador | Sim | Sim | Sim | Não |
-| tecnico | Sim | Sim | Sim | Não |
-| consulta | Não | Sim | Não | Não |
+| Cargo | Ler casos | Criar/editar casos | Importar planilha |
+|---|---:|---:|---:|
+| administrador | Sim | Sim | Sim |
+| coordenador | Sim | Sim | Não |
+| tecnico | Sim | Sim | Não |
+| consulta | Sim | Não | Não |
 
-O perfil consulta recebe registros da coleção `consultaCasos`, que contém um código aleatório e somente: idade exata, data da última alimentação, data de entrada, Conselho Tutelar, sexo, identidade de gênero, raça/cor, escolaridade e origem do caso. Ele não recebe prontuário, nomes, CPF, relatos, categoria individual de violência, dados originais da planilha, agenda ou pendências.
-
-Os cartões gerais e os totais por categoria de violência são calculados no servidor e retornados como contagens agregadas. O endpoint não retorna os registros usados nos cálculos nem a categoria associada a cada código de consulta.
+Coordenador recebe a mesma permissão de criar e editar casos que técnico nesta primeira versão; a importação fica reservada ao administrador. A lista de casos continua compartilhada entre os cargos autorizados, conforme a operação descrita pela equipe.
 
 ## Cadastro do perfil
 
-Depois de criar a conta em Firebase Authentication, use o UID como chave em `access/{uid}`. Mantenha `active: true` e acrescente um campo de texto `role` com um destes valores exatos:
+Depois de criar a conta em Firebase Authentication, use o UID da conta como chave em `access/{uid}`. Mantenha `active: true` e acrescente um campo texto `role` com um dos valores exatos acima. Exemplo estrutural:
 
 ```json
 {
   "active": true,
-  "role": "consulta"
+  "role": "tecnico"
 }
 ```
 
-As regras do cliente mantêm `access/{uid}` sem escrita, para impedir que a própria conta altere cargo ou estado. A administração provisiona esse registro pelo Console Firebase ou por ferramenta administrativa confiável.
+O aplicativo não oferece auto cadastro de cargos. As regras do exemplo mantêm `access/{uid}` sem escrita pelo cliente, para impedir que uma pessoa altere o próprio cargo. A concessão do perfil é feita pela administração do projeto Firebase.
 
-## Preparar e ativar a visão
+## Ordem de homologação e ativação
 
-1. Faça a mudança em ambiente de homologação, com casos fictícios.
-2. Implante as regras revisadas e as Cloud Functions `atualizarVisaoConsulta`, `prepararConsulta` e `obterIndicadoresConsulta` antes de disponibilizar a interface atualizada.
-3. Entre com a conta administradora e use **Preparar visão de consulta** uma vez para criar as projeções dos casos existentes.
-4. Cadastre um usuário de consulta e confira a tabela, os detalhes, os totais e os arquivos exportados. Confirme também que a conta não lê `/casos`, `/consultaIndex`, agenda nem tarefas.
-5. Depois da preparação inicial, alterações e exclusões em `/casos` atualizam a projeção por gatilho do Realtime Database.
-6. Só depois de homologar, publique a interface. A mudança neste repositório não altera sozinha o Firebase nem o site publicado.
+1. Faça backup das regras atuais e registre, em canal privado, os UIDs autorizados e os cargos aprovados. Não copie casos reais para o ambiente de testes.
+2. Atribua os campos `role` aos usuários ativos em uma janela de manutenção, mantendo os campos atuais até validar a migração. Contas sem perfil reconhecido ficam sem acesso.
+3. Inicie Authentication, Realtime Database e Functions Emulator com o projeto de demonstração `demo-proteja`. Use apenas contas e registros fictícios.
+4. Teste leitura para os quatro cargos; criação/edição para administrador, coordenador e técnico; bloqueio de escrita para consulta; bloqueio da chamada de importação para todos exceto administrador; validação de dados inválidos; e conta inativa/sem cargo.
+5. O projeto usa GitHub Pages para a interface. O backend callable e as regras precisam ser implantados separadamente no Firebase antes de publicar o frontend que os chama.
+6. A função Cloud Functions exige plano Blaze e vinculação de faturamento. Não faça upgrade sem revisar custos, alertas e limites. O código não faz upgrade nem implanta serviços.
+7. Só depois da aprovação e dos testes, implante a função, em seguida as regras e, por último, mescle/publique a interface. Mantenha o backup disponível para reversão.
 
-## Importação
+## Limite atual da importação
 
-A importação segue restrita ao administrador. A função `importarCaso` valida o perfil no servidor e grava com uma chave idempotente. Não confie apenas em controles visuais da interface.
+A interface só mostra o fluxo de importação ao administrador, mas isso não é uma barreira de segurança suficiente. Por isso, o site envia cada registro à função `importarCaso`, que confere no servidor se a conta ativa tem cargo `administrador`, valida o registro e grava com chave idempotente. Não implante o frontend sem implantar e testar a função.
 
-## Limites operacionais
+## Ambiente atual
 
-`obterIndicadoresConsulta` lê os casos completos no servidor para gerar os totais. Isso impede que a conta consulta leia os registros individuais pelo SDK, mas o tempo e o custo da função crescem com a base. Se o volume aumentar, os agregados devem ser mantidos por processo confiável ou atualizados em lote, e comparados com o total calculado antes de trocar o método.
-
-`database.rules.example.json` é um modelo versionado; sua implantação no Firebase precisa ser feita separadamente e somente após a validação dos caminhos e dos perfis. O código não publica regras nem funções.
-
+Este documento descreve uma proposta no repositório. Alterar estes arquivos ou mesclar uma branch não altera as regras, perfis, dados ou faturamento do Firebase. As regras ativas devem ser conferidas separadamente no Console Firebase.
