@@ -1,4 +1,4 @@
-import { normalize } from './import-core.js';
+import { normalize } from './import-core.js?v=20261014.1';
 
 export const VIOLENCE_TYPES = [
   ['sexual', 'Violência Sexual'], ['fisica', 'Violência Física'], ['psicologica', 'Violência Psicológica'],
