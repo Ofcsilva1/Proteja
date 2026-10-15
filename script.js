@@ -1,14 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-functions.js";
-import { permissionsForAccess } from "./permissions.js?v=20261015.1";
-import { setupExports } from "./exports.js?v=20261014.1";
-import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.1";
-import { readableSnapshot } from "./import-core.js?v=20261014.1";
-import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261014.1";
-import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261014.1";
-import { setupViolenceForm } from "./violence-form.js?v=20261014.1";
-import { setupWorkflows } from "./workflow-ui.js?v=20261014.1";
-import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js?v=20261014.1";
+import { permissionsForAccess } from "./permissions.js?v=20261015.2";
+import { setupExports } from "./exports.js?v=20261015.2";
+import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.2";
+import { readableSnapshot } from "./import-core.js?v=20261015.2";
+import { matchesGeneralSearch, sortCases, availableYears, matchesEntryPeriod } from "./case-list.js?v=20261015.2";
+import { resolveViolenceData, matchesViolence, violenceOptions } from "./violence.js?v=20261015.2";
+import { setupViolenceForm } from "./violence-form.js?v=20261015.2";
+import { setupWorkflows } from "./workflow-ui.js?v=20261015.2";
+import { replacementFor, activityText, attendanceSummary } from "./workflow-core.js?v=20261015.2";
 import { getDatabase, ref, push, onValue, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -27,6 +27,8 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const functions = getFunctions(app, "us-central1");
 const importCase = httpsCallable(functions, "importarCaso");
+const getConsultIndicators = httpsCallable(functions, "obterIndicadoresConsulta");
+const prepareConsult = httpsCallable(functions, "prepararConsulta");
 const auth = getAuth(app);
 const PAGE_SIZE = 10;
 let permissions = permissionsForAccess(null);
@@ -51,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let page = 1;
   let editingKey = null;
   let unsubscribeCases = null;
+  let consultIndicators = null;
   let caseDraft = null;
   let authEpoch = 0;
   const caseSnapshot = () => JSON.stringify([...caseForm.querySelectorAll('input,select,textarea')].map(input => [input.id, input.value, input.checked]));
@@ -201,8 +204,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const ano = $("filtroAno").value;
     const status = $("filtroSituacao").value;
     return sortCases(cases.filter(({ data }) => {
-      return matchesGeneralSearch(data, query) &&
-        matchesEntryPeriod(data, mes, ano) && (!status || data.situacaoAtual === status) &&
+      if (!permissions.canReadSensitiveCases) {
+        const searchable = [data.codigoConsulta, data.idade, data.dataUltimaAlimentacao, data.dataEntrada,
+          data.conselhoTutelar, data.sexo, data.identidadeGenero, data.cor, data.escolaridade, data.origemCaso]
+          .some(value => String(value ?? "").toLocaleLowerCase("pt-BR").includes(query));
+        return searchable && matchesEntryPeriod(data, mes, ano);
+      }
+      return matchesGeneralSearch(data, query) && matchesEntryPeriod(data, mes, ano) &&
+        (!status || data.situacaoAtual === status) &&
         matchesViolence(data, $("filtroViolencia").value, $("filtroViolenciaSexual").value);
     }), $("ordenacaoCasos").value);
   }
@@ -213,21 +222,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderDetails(row, data) {
     const detailRow = document.createElement("tr"); detailRow.className = "details-row";
-    const cell = document.createElement("td"); cell.colSpan = 7;
+    const cell = document.createElement("td"); cell.colSpan = permissions.canReadSensitiveCases ? 7 : 11;
     const grid = document.createElement("div"); grid.className = "details-grid";
-    const details = [
+    const details = permissions.canReadSensitiveCases ? [
       ["Documento de origem", data.docOrigem], ["Origem", data.origemCaso], ["Detalhamento", data.detalheOrigem],
       ["Tipo de violência", data.tipoViolencia], ["Sexual", data.violenciaSexual], ["Outros tipos de violência", data.outrasViolencias],
       ["Comunicação da violência", data.comunicacaoViolencia], ["Encaminhamento", data.encaminhamentosSolicitados],
       ["Retorno solicitado", data.retornoSolicitado], ["Técnicos", data.tecnicosReferencia], ["Atendimentos", data.datasTexto],
       ["Pendências", data.outrasPendencias]
+    ] : [
+      ["Código", data.codigoConsulta], ["Idade", data.idade], ["Última alimentação", data.dataUltimaAlimentacao],
+      ["Data de entrada", data.dataEntrada], ["Conselho Tutelar", data.conselhoTutelar], ["Sexo", data.sexo],
+      ["Identidade de gênero", data.identidadeGenero], ["Raça/cor", data.cor], ["Escolaridade", data.escolaridade],
+      ["Origem do caso", data.origemCaso]
     ];
     details.forEach(([label, value]) => {
       if (!value) return;
       const item = document.createElement("div"); const strong = document.createElement("strong");
       strong.textContent = `${label}: `; item.append(strong, document.createTextNode(value)); grid.append(item);
     });
-    appendImportedDetails(grid, data);
+    if (permissions.canReadSensitiveCases) appendImportedDetails(grid, data);
     cell.append(grid); detailRow.append(cell); row.after(detailRow);
   }
 
@@ -237,7 +251,27 @@ document.addEventListener("DOMContentLoaded", () => {
     page = Math.min(page, pages);
     const counts = { ativo: 0, encerrado_com_protecao: 0, encerrado_sem_protecao: 0, suspenso: 0, nao_competencia: 0 };
     filtered.forEach(({ data }) => { if (Object.hasOwn(counts, data.situacaoAtual)) counts[data.situacaoAtual]++; });
-    const summaryValues = { "summary-total": filtered.length, "summary-active": counts.ativo, "summary-closed": counts.encerrado_com_protecao + counts.encerrado_sem_protecao, "summary-suspended": counts.suspenso, "summary-outside": counts.nao_competencia };
+    const source = !permissions.canReadSensitiveCases ? consultIndicators : null;
+    const summaryValues = {
+      "summary-total": source?.total ?? (permissions.canReadSensitiveCases ? filtered.length : 0),
+      "summary-active": source?.ativo ?? counts.ativo,
+      "summary-closed": source?.encerrado ?? (counts.encerrado_com_protecao + counts.encerrado_sem_protecao),
+      "summary-suspended": source?.suspenso ?? counts.suspenso,
+      "summary-outside": source?.naoCompetencia ?? counts.nao_competencia
+    };
+    $("violence-summary-section").hidden = permissions.canReadSensitiveCases;
+    document.querySelector(".summary-grid")?.setAttribute("aria-label", permissions.canReadSensitiveCases
+      ? "Resumo dos casos que correspondem aos filtros" : "Indicadores agregados de todos os casos");
+    $("violence-summary").replaceChildren();
+    for (const [label, count] of Object.entries(source?.porViolencia || {})) {
+      const card = document.createElement("article"); card.className = "summary-card";
+      const caption = document.createElement("span"); caption.className = "summary-label"; caption.textContent = label;
+      const value = document.createElement("strong"); value.textContent = String(count);
+      const content = document.createElement("div"); content.append(caption, value); card.append(content); $("violence-summary").append(card);
+    }
+    $("consultation-view-status").hidden = permissions.canReadSensitiveCases || Boolean(consultIndicators);
+    $("consultation-view-status").textContent = !permissions.canReadSensitiveCases && !consultIndicators
+      ? "Os indicadores agregados ainda estão sendo carregados." : "";
     for (const [id,value] of Object.entries(summaryValues)) {
       const node = $(id), changed = node.textContent !== String(value); node.textContent = value;
       if (changed) {
@@ -248,6 +282,10 @@ document.addEventListener("DOMContentLoaded", () => {
     caseTableBody.replaceChildren();
     filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach(({ key, data }) => {
       const row = document.createElement("tr"); row.dataset.key = key;
+      if (!permissions.canReadSensitiveCases) {
+        [data.codigoConsulta, data.idade, data.dataUltimaAlimentacao, data.dataEntrada, data.conselhoTutelar,
+          data.sexo, data.identidadeGenero, data.cor, data.escolaridade, data.origemCaso].forEach(value => row.append(makeCell(value)));
+      } else {
       row.append(makeCell(data.numeroProntuario, "case-number"));
       row.append(makeCell(data.dataEntrada ? new Date(`${data.dataEntrada}T12:00:00`).toLocaleDateString("pt-BR") : "—"));
       const statusCell = document.createElement("td"); const badge = document.createElement("span");
@@ -258,6 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const agendaLink = document.createElement('button'); agendaLink.type='button'; agendaLink.className='btn btn-sm btn-outline-secondary mt-2'; agendaLink.textContent='Ver agenda';
       agendaLink.addEventListener('click',()=>workflows.openScope('agenda',key)); attendance.append(document.createElement('br'),agendaLink);
       row.append(makeCell(data.nomeCriad), makeCell(data.responsavelNome), attendance);
+      }
       const actions = document.createElement("td"); actions.className = "text-end text-nowrap";
       const details = document.createElement("button"); details.type = "button"; details.className = "btn btn-sm btn-outline-secondary btnDetalhes"; details.title = "Ver detalhes"; details.setAttribute("aria-label", "Ver detalhes do caso"); details.innerHTML = '<i class="bi bi-eye"></i>';
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn btn-sm btn-outline-primary btnEditar ms-1"; edit.title = "Editar caso"; edit.setAttribute("aria-label", "Editar caso"); edit.innerHTML = '<i class="bi bi-pencil"></i>'; edit.hidden = !permissions.canWriteCases;
@@ -267,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (button.classList.contains("btnDetalhes")) {
           const next = row.nextElementSibling;
           if (next?.classList.contains("details-row")) next.remove(); else renderDetails(row, data);
-        } else if (button.classList.contains("btnEditar")) {
+      } else if (button.classList.contains("btnEditar")) {
           editCase(key);
         }
       });
@@ -335,10 +374,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  setupExports({ getData: () => filteredCases().map(({ data }) => ({ ...data,
+  const exportController = setupExports({ getAllowedKeys: () => permissions.canReadSensitiveCases ? null : [
+    "codigoConsulta", "idade", "dataUltimaAlimentacao", "dataEntrada", "conselhoTutelar", "sexo",
+    "identidadeGenero", "cor", "escolaridade", "origemCaso"
+  ], getData: () => filteredCases().map(({ data }) => permissions.canReadSensitiveCases ? ({ ...data,
     agendaRegistrada: activityText({key:'',data},'agenda'), pendenciasRegistradas: activityText({key:'',data},'tarefas'),
     dadosPlanilha: readableSnapshot(data.dadosPlanilha), historicoPlanilha: readableSnapshot(data.historicoPlanilha)
-  })), notify });
+  }) : ({ ...data })), notify });
   const importer = setupImport({
     getUser: () => auth.currentUser,
     getPermission: async uid => auth.currentUser?.uid === uid && permissions.canImport,
@@ -362,6 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
     appWrapper.hidden = true;
     if (!user) {
       permissions = permissionsForAccess(null);
+      consultIndicators = null;
       importer.reset();
       cases = [];
       caseDraft = null;
@@ -376,6 +419,9 @@ document.addEventListener("DOMContentLoaded", () => {
       filterIds.forEach(id => { $(id).value = ""; });
       $("filtroAno").replaceChildren(new Option("Todos os anos", ""));
       syncViolenceOptions();
+      exportController.refreshColumns();
+      $("violence-summary-section").hidden = true;
+      $("consultation-view-status").hidden = true;
       $("ordenacaoCasos").value = "recentes";
       $("export-columns-dialog").close();
       caseTableBody.replaceChildren();
@@ -400,6 +446,18 @@ document.addEventListener("DOMContentLoaded", () => {
       $("nav-new").hidden = !permissions.canWriteCases;
       $("btnEmptyNew").hidden = !permissions.canWriteCases;
       $("btnImport").hidden = !permissions.canImport;
+      $("btnPrepareConsult").hidden = permissions.role !== "administrador";
+      $("nav-agenda").hidden = !permissions.canReadSensitiveCases;
+      $("nav-tasks").hidden = !permissions.canReadSensitiveCases;
+      $("filtroSituacao").hidden = !permissions.canReadSensitiveCases;
+      $("filtroViolencia").hidden = !permissions.canReadSensitiveCases;
+      $("filtroViolenciaSexual").hidden = !permissions.canReadSensitiveCases;
+      const headers = permissions.canReadSensitiveCases
+        ? ["Prontuário", "Entrada", "Situação", "Criança/adolescente", "Responsável", "Atendimentos", "Ações"]
+        : ["Código", "Idade", "Última alimentação", "Entrada", "Conselho Tutelar", "Sexo", "Identidade de gênero", "Raça/cor", "Escolaridade", "Origem", "Ações"];
+      $("case-table-headers").replaceChildren(...headers.map(text => { const th = document.createElement("th"); th.textContent = text; return th; }));
+      $("ordenacaoCasos").value = "recentes";
+      exportController.refreshColumns();
       workflows.setCanWrite(permissions.canWriteCases);
     } catch {
       if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
@@ -409,12 +467,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
+    consultIndicators = null;
+    if (!permissions.canReadSensitiveCases) {
+      getConsultIndicators().then(result => {
+        if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
+        consultIndicators = result.data; render();
+      }).catch(() => { if (auth.currentUser?.uid === user.uid && authEpoch === epoch) notify("Não foi possível carregar os indicadores agregados.", "danger"); });
+    }
+    unsubscribeCases = onValue(ref(database, permissions.canReadSensitiveCases ? "casos" : "consultaCasos"), (snapshot) => {
       if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
       cases = [];
       snapshot.forEach((child) => {
         const data = child.val();
-        if (data && data.numeroProntuario) cases.push({ key: child.key, data: resolveViolenceData(data) });
+        if (data && (permissions.canReadSensitiveCases ? data.numeroProntuario : data.codigoConsulta)) cases.push({ key: child.key, data: permissions.canReadSensitiveCases ? resolveViolenceData(data) : data });
       });
       const selectedYear = $("filtroAno").value;
       const years = availableYears(cases);
@@ -428,6 +493,16 @@ document.addEventListener("DOMContentLoaded", () => {
       workflows.reset(); toggleView("list", true); render(); notify(firebaseMessage(error), "danger");
     });
   }
+
+  $("btnPrepareConsult").addEventListener("click", async () => {
+    if (permissions.role !== "administrador") return;
+    const button = $("btnPrepareConsult"); setBusy(button, true, "Preparando...");
+    try {
+      const result = await prepareConsult();
+      notify(`Visão de consulta preparada para ${result.data.prepared} casos.`, "success");
+    } catch (error) { notify(firebaseMessage(error), "danger"); }
+    finally { setBusy(button, false); }
+  });
 
   async function initializeSession() {
     let preparationTimeout;
@@ -458,4 +533,5 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   initializeSession();
 });
+
 
