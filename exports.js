@@ -1,10 +1,17 @@
 // A single catalog keeps the column selection identical across all three formats.
 export const EXPORT_COLUMNS = [
+  { key: "codigoConsulta", label: "Código de consulta", group: "Consulta" },
+  { key: "idade", label: "Idade", group: "Consulta" },
+  { key: "dataUltimaAlimentacao", label: "Data da última alimentação", group: "Consulta" },
+  { key: "conselhoTutelar", label: "Conselho Tutelar", group: "Consulta" },
+  { key: "sexo", label: "Sexo", group: "Consulta" },
+  { key: "identidadeGenero", label: "Identidade de gênero", group: "Consulta" },
+  { key: "escolaridade", label: "Escolaridade", group: "Consulta" },
+  { key: "origemCaso", label: "Origem do caso", group: "Consulta" },
   { key: "numeroProntuario", label: "Nº Prontuário", group: "Identificação" },
-  { key: "dataEntrada", label: "Data Entrada", group: "Identificação" },
+  { key: "dataEntrada", label: "Data Entrada", group: "Consulta" },
   { key: "docOrigem", label: "Doc. Origem", group: "Identificação" },
-  { key: "origemCaso", label: "Origem", group: "Identificação" },
-  { key: "cor", label: "Cor", group: "Identificação" },
+  { key: "cor", label: "Raça/cor", group: "Consulta" },
   { key: "situacaoAtual", label: "Situação", group: "Situação" },
   { key: "nomeCriad", label: "Nome CRIAD", group: "CRIAD e responsável" },
   { key: "responsavelNome", label: "Responsável", group: "CRIAD e responsável" },
@@ -36,7 +43,11 @@ export const EXPORT_COLUMNS = [
 ];
 
 // Preserve the existing 13-column export unless the user changes the selection.
-export const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.slice(0, 13).map(column => column.key);
+export const DEFAULT_EXPORT_KEYS = [
+  "numeroProntuario", "dataEntrada", "docOrigem", "origemCaso", "cor", "situacaoAtual",
+  "nomeCriad", "responsavelNome", "responsavelCpf", "comunicacaoViolencia",
+  "encaminhamentosSolicitados", "datasTexto", "tecnicosReferencia"
+];
 
 // Width bounds are PDF-only, in points. Dates, IDs and short answers need less
 // space than names or narratives; CSV/XLS keep the original labels and values.
@@ -96,19 +107,29 @@ function download(blob, name) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function setupExports({ getData, notify }) {
+export function setupExports({ getData, notify, getAllowedKeys = () => null }) {
   const $ = id => document.getElementById(id);
   const dialog = $("export-columns-dialog");
   const options = $("export-column-options");
   let selectedKeys = new Set(DEFAULT_EXPORT_KEYS);
 
   // The dialog edits a draft; closing or pressing Escape leaves the export unchanged.
-  const groups = new Map();
-  EXPORT_COLUMNS.forEach(column => {
-    if (!groups.has(column.group)) groups.set(column.group, []);
-    groups.get(column.group).push(column);
-  });
-  groups.forEach((columns, group) => {
+  function allowedColumns() {
+    const allowed = getAllowedKeys();
+    return allowed ? EXPORT_COLUMNS.filter(column => allowed.includes(column.key)) : EXPORT_COLUMNS;
+  }
+  function refreshColumns() {
+    const columnsAllowed = allowedColumns();
+    const allowedSet = new Set(columnsAllowed.map(column => column.key));
+    selectedKeys = new Set([...selectedKeys].filter(key => allowedSet.has(key)));
+    if (!selectedKeys.size) selectedKeys = new Set(columnsAllowed.map(column => column.key));
+    options.replaceChildren();
+    const groups = new Map();
+    columnsAllowed.forEach(column => {
+      if (!groups.has(column.group)) groups.set(column.group, []);
+      groups.get(column.group).push(column);
+    });
+    groups.forEach((columns, group) => {
     const fieldset = document.createElement("fieldset");
     const legend = document.createElement("legend");
     legend.textContent = group;
@@ -127,7 +148,10 @@ export function setupExports({ getData, notify }) {
       fieldset.append(label);
     });
     options.append(fieldset);
-  });
+    });
+    $("export-column-count").textContent = selectedKeys.size;
+  }
+  refreshColumns();
 
   function draftKeys() {
     return [...options.querySelectorAll("input:checked")].map(input => input.value);
@@ -135,7 +159,7 @@ export function setupExports({ getData, notify }) {
   function updateDraftSummary() {
     const count = draftKeys().length;
     $("export-selection-summary").textContent = count
-      ? count + " de " + EXPORT_COLUMNS.length + " colunas selecionadas"
+      ? count + " de " + allowedColumns().length + " colunas selecionadas"
       : "Selecione pelo menos uma coluna.";
     $("btnApplyExportColumns").disabled = count === 0;
   }
@@ -153,14 +177,19 @@ export function setupExports({ getData, notify }) {
     $(id).addEventListener("click", () => dialog.close());
   });
   options.addEventListener("change", updateDraftSummary);
-  $("btnSelectAllColumns").addEventListener("click", () => setDraft(EXPORT_COLUMNS.map(column => column.key)));
+  $("btnSelectAllColumns").addEventListener("click", () => setDraft(allowedColumns().map(column => column.key)));
   $("btnClearColumns").addEventListener("click", () => setDraft([]));
-  $("btnDefaultColumns").addEventListener("click", () => setDraft(DEFAULT_EXPORT_KEYS));
+  $("btnDefaultColumns").addEventListener("click", () => {
+    const allowed = new Set(allowedColumns().map(column => column.key));
+    const defaults = DEFAULT_EXPORT_KEYS.filter(key => allowed.has(key));
+    setDraft(defaults.length ? defaults : [...allowed]);
+  });
   $("export-columns-form").addEventListener("submit", event => {
     event.preventDefault();
     const keys = draftKeys();
     if (!keys.length) return;
-    selectedKeys = new Set(keys);
+    const allowed = new Set(allowedColumns().map(column => column.key));
+    selectedKeys = new Set(keys.filter(key => allowed.has(key)));
     $("export-column-count").textContent = keys.length;
     dialog.close();
   });
@@ -223,5 +252,7 @@ export function setupExports({ getData, notify }) {
       catch { notify("Não foi possível exportar. Tente novamente.", "danger"); }
     });
   });
+  return { refreshColumns };
 }
+
 
