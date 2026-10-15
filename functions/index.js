@@ -84,8 +84,21 @@ function normalized(value) {
   return String(value ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+function originalViolenceFields(data) {
+  let original = {};
+  try { original = JSON.parse(data?.dadosPlanilha || "{}"); } catch { return []; }
+  if (!original || typeof original !== "object" || Array.isArray(original)) return [];
+  const values = [];
+  for (const [header, value] of Object.entries(original)) {
+    const name = normalized(header);
+    if (["tipo de violencia", "sexual", "outros"].includes(name) && typeof value === "string") values.push(value);
+  }
+  return values;
+}
+
 function violenceCategories(data) {
-  const source = [data?.tipoViolencia, data?.violenciaSexual, data?.outrasViolencias].filter(Boolean).join(";");
+  const source = [data?.tipoViolencia, data?.violenciaSexual, data?.outrasViolencias, ...originalViolenceFields(data)]
+    .filter(Boolean).join(";");
   const normalizedText = normalized(source);
   const found = new Set();
   for (const [key, label] of VIOLENCE_LABELS) {
