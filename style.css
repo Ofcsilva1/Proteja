@@ -496,3 +496,9 @@ textarea.form-control { min-height: 94px; resize: vertical; line-height: 1.65; }
   .workflow-editor-fields { grid-template-columns: minmax(0, 1fr); }
   .workflow-dialog { padding: 18px; }
 }
+
+/* Phase 1: contextual errors, preserving the institutional palette. */
+.field-error { display: block; margin-top: 7px; color: #b42318; font-size: .85rem; line-height: 1.5; overflow-wrap: anywhere; }
+[aria-invalid="true"] { border-color: #b42318 !important; }
+[data-theme="dark"] .field-error { color: #ffb4ab; }
+[data-theme="dark"] [aria-invalid="true"] { border-color: #ffb4ab !important; }

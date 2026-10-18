@@ -233,7 +233,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <label class="form-label">Número do Prontuário <span class="text-danger">*</span></label>
 <div class="input-group">
 <span class="input-group-text"><i class="bi bi-file-text"></i></span>
-<input type="text" id="numero-prontuario" class="form-control" required placeholder="Digite o número" />
+<input type="text" id="numero-prontuario" class="form-control" required maxlength="100" placeholder="Digite o número" />
 </div>
 </div>
 <div class="field-group">
@@ -253,6 +253,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">Origem do Caso</label>
 <select id="origem-caso" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="demanda_criad">Demanda espontânea da CRIAD</option>
 <option value="demanda_responsavel">Demanda espontânea do responsável</option>
 <option value="enc_dercca">Encaminhamento da DERRCA</option>
@@ -267,6 +268,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">COR (Etnia/Cor)</label>
 <select id="cor" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="pardo">Pardo(a)</option>
 <option value="branco">Branco(a)</option>
 <option value="preto">Preto(a)</option>
@@ -287,6 +289,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">Situação Atual</label>
 <select id="situacao-atual" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="ativo">Ativo</option>
 <option value="suspenso">Suspenso</option>
 <option value="encerrado_com_protecao">Encerrado com proteção</option>
@@ -325,6 +328,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">Comunicação da Violência</label>
 <select id="comunicacao-violencia" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="comunicacao_ct">Comunicação ao CT</option>
 <option value="comunicacao_policia">Comunicação à Polícia</option>
 <option value="comunicacao_mp">Comunicação ao MP</option>
@@ -368,6 +372,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">Houve retorno solicitado?</label>
 <select id="retorno-solicitado" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="sim">Sim</option>
 <option value="nao">Não</option>
 </select>
@@ -384,6 +389,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">Estudo de Caso elaborado?</label>
 <select id="estudo-caso" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="sim">Sim</option>
 <option value="nao">Não</option>
 </select>
@@ -391,6 +397,7 @@ O acesso é destinado a contas autorizadas pela instituição.<small class="app-
 <div class="field-group">
 <label class="form-label">Plano Individual elaborado?</label>
 <select id="pia-elaborado" class="form-select">
+<option value="" selected>Selecione…</option>
 <option value="sim">Sim</option>
 <option value="nao">Não</option>
 </select>

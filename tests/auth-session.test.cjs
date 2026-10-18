@@ -57,10 +57,17 @@ async function fixture(options = {}) {
         : 'export const initializeApp=()=>({});';
       return route.fulfill({ contentType: "text/javascript", body });
     }
+    if (options.realBootstrap && target.hostname === 'cdn.jsdelivr.net' && target.pathname.includes('/bootstrap@5.3.0/')) {
+      const name = target.pathname.endsWith('.js') ? 'bootstrap.bundle.min.js' : 'bootstrap.min.css';
+      return route.fulfill({contentType:name.endsWith('.js')?'text/javascript':'text/css',body:fs.readFileSync(path.join(__dirname, 'fixtures', 'bootstrap-5.3.0', name))});
+    }
     // Never fall through to a real external service.
     return route.fulfill({ contentType: target.pathname.endsWith(".js") ? "text/javascript" : "text/css", body: "" });
   });
   const page = await context.newPage();
+  page.fixtureErrors = [];
+  page.on('pageerror', error => page.fixtureErrors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') page.fixtureErrors.push(message.text()); });
   if(options.fastPreparationTimeout) await page.addInitScript(() => {
     const original = window.setTimeout.bind(window);
     window.setTimeout = (fn, delay, ...args) => original(fn, delay === 15000 ? 100 : delay, ...args);
@@ -535,5 +542,180 @@ test('new manual case and import preview share the same prontuario identity',asy
     await page.waitForFunction(()=>document.getElementById('import-summary').textContent.includes('1 já existentes'));
     assert.match(await page.locator('#import-summary').textContent(),/^0 prontos/);
     assert.equal(await page.locator('#import-save').isDisabled(),true);
+  } finally {await context.close();}
+});
+
+
+// Phase 1: all persistence below is the in-memory Firebase fixture.
+const neutralFields = ['origem-caso','cor','situacao-atual','comunicacao-violencia','retorno-solicitado','estudo-caso','pia-elaborado'];
+async function beforeUnloadBlocked(page) {
+  return page.evaluate(() => {
+    const event = new Event('beforeunload', {cancelable:true});
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+}
+async function newCase(page) {
+  await workflowLogin(page);
+  await page.locator('#nav-new').click();
+}
+test('phase1 neutral defaults save no invented answers and clean drafts do not warn', async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await newCase(page);
+    for(const id of neutralFields) assert.equal(await page.locator('#'+id).inputValue(),'');
+    assert.equal(await beforeUnloadBlocked(page),false);
+    await page.locator('#numero-prontuario').fill('FASE1-NEUTRO');
+    await page.locator('#data-entrada').fill('2026-10-17');
+    assert.equal(await beforeUnloadBlocked(page),true);
+    await page.locator('#btnSalvarCaso').click();
+    await page.waitForFunction(()=>window.__authTest.caseWrites===1);
+    const saved=await page.evaluate(()=>window.__authTest.workflowCases.find(c=>c.data.numeroProntuario==='FASE1-NEUTRO').data);
+    assert.equal(Object.hasOwn(saved,'situacaoAtual'),false);
+    for(const key of ['origemCaso','cor','comunicacaoViolencia','retornoSolicitado','estudoCaso','piaElaborado']) assert.equal(saved[key],'');
+    await page.waitForFunction(()=>document.getElementById('form-section').hidden);
+    assert.equal(await beforeUnloadBlocked(page),false);
+  } finally {await context.close();}
+});
+test('phase1 editing preserves imported selections and optional unanswered fields',async()=>{
+  const original={numeroProntuario:'LEGADO-1',dataEntrada:'2026-01-01',cor:'Valor importado',origemCaso:'enc_saude',retornoSolicitado:'nao',estudoCaso:'sim',piaElaborado:'',comunicacaoViolencia:'nao'};
+  const {page,context}=await fixture({workflows:true,workflowCases:[{key:'legacy-case',data:original}],realBootstrap:true});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    assert.equal(await beforeUnloadBlocked(page),false);
+    await page.locator('#detalhe-origem').fill('Descrição fictícia');
+    await page.locator('#btnSalvarCaso').click();await page.waitForFunction(()=>window.__authTest.caseWrites===1);
+    const saved=await page.evaluate(()=>window.__authTest.workflowCases[0].data);
+    for(const [key,value] of Object.entries(original)) assert.equal(saved[key],value);
+    await page.locator('#nav-new').click();
+    for(const id of neutralFields) assert.equal(await page.locator('#'+id).inputValue(),'');
+  } finally {await context.close();}
+});
+test('phase1 native and whitespace errors focus the correct tab and keep input',async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await newCase(page);
+    await page.locator('#numero-prontuario').fill('   ');
+    await page.locator('[data-bs-target="#tab3"]').click();
+    await page.locator('#responsavel-nome').fill('Responsável fictício');
+    await page.locator('#btnSalvarCaso').click();
+    assert.equal(await page.locator('#numero-prontuario').getAttribute('aria-invalid'),'true');
+    assert.equal(await page.locator('#numero-prontuario').evaluate(el=>el===document.activeElement),true);
+    assert.equal(await page.locator('#tab1').isVisible(),true);
+    assert.match(await page.locator('#numero-prontuario-error').textContent(),/Informe/);
+    assert.match(await page.locator('#numero-prontuario').getAttribute('aria-describedby'),/numero-prontuario-error/);
+    assert.equal(await page.locator('#responsavel-nome').inputValue(),'Responsável fictício');
+    await page.locator('#numero-prontuario').fill('VALIDO');
+    assert.equal(await page.locator('#numero-prontuario').getAttribute('aria-invalid'),null);
+    await page.locator('#btnSalvarCaso').click();
+    assert.equal(await page.locator('#data-entrada').evaluate(el=>el===document.activeElement),true);
+    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),0);
+    await page.locator('#numero-prontuario').evaluate(el=>{el.value='X'.repeat(101);});
+    await page.locator('#btnSalvarCaso').click();
+    assert.match(await page.locator('#numero-prontuario-error').textContent(),/100/);
+  } finally {await context.close();}
+});
+test('phase1 duplicate error is inline and changing the number permits retry',async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await newCase(page);await page.locator('#numero-prontuario').fill('5');await page.locator('#data-entrada').fill('2026-10-17');
+    await page.locator('#btnSalvarCaso').click();
+    await page.waitForFunction(()=>document.getElementById('numero-prontuario').getAttribute('aria-invalid')==='true');
+    await page.waitForFunction(()=>document.activeElement.id==='numero-prontuario');
+    assert.match(await page.locator('#numero-prontuario-error').textContent(),/já está cadastrado/);
+    assert.equal(await beforeUnloadBlocked(page),true);
+    await page.locator('#numero-prontuario').fill('NOVO-6');await page.locator('#btnSalvarCaso').click();
+    await page.waitForFunction(()=>window.__authTest.caseWrites===1);
+  } finally {await context.close();}
+});
+test('phase1 discard and restoring the original values remove exit warnings',async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await newCase(page);await page.locator('#numero-prontuario').fill('RASCUNHO');
+    page.once('dialog',dialog=>dialog.dismiss());await page.locator('#btnCancelarForm').click();
+    assert.equal(await page.locator('#form-section').isVisible(),true);
+    assert.equal(await beforeUnloadBlocked(page),true);
+    await page.locator('#numero-prontuario').fill('');assert.equal(await beforeUnloadBlocked(page),false);
+    await page.locator('#numero-prontuario').fill('DESCARTAR');
+    page.once('dialog',dialog=>dialog.accept());await page.locator('#btnCancelarForm').click();
+    assert.equal(await beforeUnloadBlocked(page),false);
+  } finally {await context.close();}
+});
+test('phase1 real reload can be canceled without losing the draft',async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await newCase(page);await page.locator('#numero-prontuario').fill('MANTER');
+    const shown=page.waitForEvent('dialog');
+    const reload=page.reload().catch(()=>null);
+    const dialog=await shown;assert.equal(dialog.type(),'beforeunload');await dialog.dismiss();await reload;
+    assert.equal(await page.locator('#numero-prontuario').inputValue(),'MANTER');
+    const second=page.waitForEvent('dialog');const accepted=page.reload();await (await second).accept();await accepted;
+    await ready(page);assert.equal(await page.locator('#auth-wrapper').isVisible(),true);
+  } finally {await context.close();}
+});
+test('phase1 workflow errors are inline and pending drafts protect reload and cancel',async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await workflowLogin(page);await page.locator('#nav-agenda').click();await page.locator('#agenda-new').click();
+    assert.equal(await beforeUnloadBlocked(page),false);
+    await page.locator('#workflow-case').selectOption('workflow-case');await page.locator('#workflow-owner').fill('   ');
+    await page.locator('#workflow-save').click();
+    assert.equal(await page.locator('#workflow-owner').getAttribute('aria-invalid'),'true');
+    assert.equal(await page.locator('#workflow-owner').evaluate(el=>el===document.activeElement),true);
+    assert.equal(await beforeUnloadBlocked(page),true);
+    await page.locator('#workflow-owner').fill('Equipe fictícia');await page.locator('#workflow-date').fill('2026-10-17');
+    await page.locator('#workflow-status').selectOption('realizado');await page.locator('#workflow-save').click();
+    assert.equal(await page.locator('#workflow-completed').getAttribute('aria-invalid'),'true');
+    await page.locator('#workflow-completed').fill('2026-10-17');await page.locator('#workflow-save').click();
+    await workflowSaved(page);assert.equal(await beforeUnloadBlocked(page),false);
+    await page.locator('#nav-tasks').click();await page.locator('#tarefas-new').click();
+    await page.locator('#workflow-description').fill('Pendência fictícia');
+    page.once('dialog',dialog=>dialog.dismiss());await page.locator('#workflow-cancel').click();
+    assert.equal(await page.locator('#workflow-dialog').isVisible(),true);
+    page.once('dialog',dialog=>dialog.accept());await page.locator('#workflow-cancel').click();
+    assert.equal(await beforeUnloadBlocked(page),false);
+  } finally {await context.close();}
+});
+test('phase1 in-flight and failed saves keep the draft protected',async()=>{
+  const {page,context}=await fixture({workflows:true,writeDelay:400,realBootstrap:true});
+  try {
+    await workflowLogin(page);await page.locator('.btnEditar').click();
+    await page.locator('#detalhe-origem').fill('Manter ap?s falha');
+    await page.evaluate(()=>{window.__authTest.failWorkflow=true;});
+    await page.locator('#btnSalvarCaso').click();await page.waitForFunction(()=>window.__authTest.workflowAttempts===1);
+    assert.equal(await beforeUnloadBlocked(page),true);
+    await page.waitForFunction(()=>document.getElementById('case-save-status').textContent.length>0);
+    assert.equal(await page.locator('#detalhe-origem').inputValue(),'Manter ap?s falha');
+    assert.equal(await beforeUnloadBlocked(page),true);
+    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),0);
+  } finally {await context.close();}
+});
+test('phase1 actual tabs preserve input and errors fit desktop/mobile in both themes',async()=>{
+  const {page,context}=await fixture({workflows:true,realBootstrap:true});
+  try {
+    await newCase(page);await page.locator('#numero-prontuario').fill('FICTICIO-UI');
+    for(const width of [1440,390]) {
+      await page.setViewportSize({width,height:900});
+      for(const theme of ['light','dark']) {
+        await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.bsTheme=theme;},theme);
+        for(let tab=1;tab<=8;tab++) {
+          const button=page.locator(`[data-bs-target="#tab${tab}"]`);await button.click();
+          await page.waitForFunction(id => { const pane=document.getElementById(id); return pane.classList.contains('show') && getComputedStyle(pane).opacity==='1'; }, 'tab'+tab);
+          assert.equal(await page.locator('#tab'+tab).isVisible(),true);
+        }
+        assert.equal(await page.locator('#numero-prontuario').inputValue(),'FICTICIO-UI');
+        await page.locator('#btnSalvarCaso').click();
+        assert.equal(await page.locator('#tab1').isVisible(),true);
+        await page.waitForFunction(()=>document.getElementById('tab1').classList.contains('show') && getComputedStyle(document.getElementById('tab1')).opacity==='1');
+        await page.evaluate(()=>document.querySelectorAll('.notification').forEach(n=>n.remove()));
+        const message=page.locator('#data-entrada-error');assert.equal(await message.isVisible(),true);
+        const box=await message.boundingBox();assert.ok(box.x>=0 && box.x+box.width<=width);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+        const activeTab=await page.locator('[data-bs-target="#tab1"]').boundingBox();
+        assert.ok(activeTab.x>=0 && activeTab.x+activeTab.width<=width);
+        assert.deepEqual(page.fixtureErrors, []);
+        if(process.env.PROTEJA_QA_ASSETS) await page.screenshot({path:path.join(process.env.PROTEJA_QA_ASSETS,`fase1-${width}-${theme}.png`),fullPage:true});
+      }
+    }
   } finally {await context.close();}
 });
