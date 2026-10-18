@@ -1,9 +1,10 @@
-import { APPOINTMENT_STATUS, TASK_STATUS, APPOINTMENT_TYPES, TASK_TYPES, PREFIX, todayISO, strictDate, collectActivities, filterActivities, isLate, buildActivity } from './workflow-core.js?v=20261015.3';
+import { setupFormFeedback } from './form-feedback.js?v=20261015.3';
+import { APPOINTMENT_STATUS, TASK_STATUS, APPOINTMENT_TYPES, TASK_TYPES, PREFIX, todayISO, strictDate, validateActivity, collectActivities, filterActivities, isLate, buildActivity } from './workflow-core.js?v=20261015.3';
 
 const PAGE_SIZE = 10;
 const textNode = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 const displayDate = date => strictDate(date) ? `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : 'Sem prazo';
-export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, openCase, notify, navigate }) {
+export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, openCase, notify, navigate, onDraftChange = () => {} }) {
   const $ = id => document.getElementById(id);
   const states = { agenda: { page: 1 }, tarefas: { page: 1 } };
   let writeEnabled = false, draft = null, busy = false, generation = 0;
@@ -46,6 +47,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     </fieldset><p id="workflow-error" role="status" aria-live="polite"></p><div class="workflow-editor-footer"><button id="workflow-cancel" type="button" class="btn btn-outline-secondary">Cancelar</button><button id="workflow-save" type="submit" class="btn btn-primary">Salvar</button></div></form>`;
   document.body.append(dialog);
   const form = $('workflow-form');
+  const feedback = setupFormFeedback(form);
   function caseOptions(select, selected, includeAll = true) {
     const collator = new Intl.Collator('pt-BR', { numeric: true });
     const records = [...getCases()].sort((a,b)=>collator.compare(String(a.data.numeroProntuario),String(b.data.numeroProntuario)));
@@ -133,7 +135,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
   function closeEditor(force=false) {
     if(busy && !force) return;
     if(!force && draft && snapshot()!==draft.initial && !window.confirm('Descartar as alterações que ainda não foram salvas?')) return;
-    dialog.close(); form.reset(); draft=null; $('workflow-error').textContent='';
+    dialog.close(); form.reset(); draft=null; $('workflow-error').textContent=''; onDraftChange();
   }
   $('workflow-cancel').addEventListener('click',()=>closeEditor());
   dialog.addEventListener('cancel',event=>{event.preventDefault();closeEditor();});
@@ -159,17 +161,30 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     const types=isAgenda?APPOINTMENT_TYPES:TASK_TYPES, statuses=isAgenda?APPOINTMENT_STATUS:TASK_STATUS;
     $('workflow-type').replaceChildren(...types.map(label=>new Option(label,label))); $('workflow-type').value=data.tipo||types[0];
     $('workflow-status').replaceChildren(...Object.entries(statuses).map(([value,label])=>new Option(label,value))); $('workflow-status').value=data.situacao||(isAgenda?'agendado':'aberta');
-    $('workflow-error').textContent=''; updateCompletion(); draft.initial=snapshot(); dialog.showModal();
+    $('workflow-error').textContent=''; updateCompletion(); draft.initial=snapshot(); dialog.showModal(); onDraftChange();
   }
   form.addEventListener('submit',async event=>{
     event.preventDefault(); if(busy||!draft||!getUser()||getUser().uid!==draft.uid) return;
-    if(!form.reportValidity()) return;
+    const data = Object.fromEntries(Object.entries(values()).map(([key, value]) => [key, value.trim()]));
+    if (data.situacao !== (draft.kind === 'agenda' ? 'realizado' : 'concluida')) data.dataConclusao = '';
+    const fieldErrors = {};
+    const errorTargets = [
+      ['Responsável:', 'owner'], ['Observação:', 'notes'], ['situação', 'status'],
+      ['tipo válido', 'type'], ['data válida', 'date'], ['horário', 'time'],
+      ['Pendência:', 'description'], ['prazo válido', 'date'], ['prioridade', 'priority'],
+      ['data real', 'completed']
+    ];
+    for (const message of validateActivity(draft.kind, data)) {
+      const target = errorTargets.find(([part]) => message.includes(part));
+      if (target) fieldErrors[`workflow-${target[1]}`] = message;
+    }
+    if (!feedback.validate(fieldErrors)) return;
     const token=generation, current=draft, caseKey=$('workflow-case').value;
     let slowSave = null;
-    if(!getCases().some(c=>c.key===caseKey)) { $('workflow-error').textContent='Selecione um prontuário existente.';return; }
+    if(!getCases().some(c=>c.key===caseKey)) { feedback.show($('workflow-case'), 'Selecione um prontuário existente.'); feedback.focus($('workflow-case')); return; }
     try {
       const value=buildActivity(current.kind,values(),current.item?.activity,current.uid);
-      busy=true; $('workflow-editor-fields').disabled=true; $('workflow-save').disabled=true; $('workflow-cancel').disabled=true;
+      busy=true; onDraftChange(); $('workflow-editor-fields').disabled=true; $('workflow-save').disabled=true; $('workflow-cancel').disabled=true;
       $('workflow-error').textContent='Salvando. Aguarde a confirmação do servidor.';
       slowSave = window.setTimeout(() => { if(token===generation && busy && getUser()?.uid===current.uid) $('workflow-error').textContent='O servidor ainda não confirmou. Confira a conexão e mantenha esta página aberta para acompanhar o resultado.'; }, 8000);
       const allowed = await canWrite(current.uid);
@@ -183,7 +198,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
       if(token===generation&&getUser()?.uid===current.uid) $('workflow-error').textContent=error.code ? 'Não foi possível salvar. Confira a conexão, a autorização e os dados do prontuário.' : error.message;
     } finally {
       window.clearTimeout(slowSave);
-      if(token===generation) { busy=false; $('workflow-editor-fields').disabled=false; $('workflow-case').disabled=Boolean(draft?.item); $('workflow-save').disabled=!writeEnabled; $('workflow-cancel').disabled=false; }
+      if(token===generation) { busy=false; $('workflow-editor-fields').disabled=false; $('workflow-case').disabled=Boolean(draft?.item); $('workflow-save').disabled=!writeEnabled; $('workflow-cancel').disabled=false; onDraftChange(); }
     }
   });
   function render() { for(const kind of ['agenda','tarefas']) renderKind(kind); }
@@ -195,7 +210,7 @@ export function setupWorkflows({ getCases, getUser, canWrite, saveActivity, open
     }
     $('workflow-editor-fields').disabled=false;$('workflow-save').disabled=false;$('workflow-cancel').disabled=false;render();
   }
-  return { render, reset, setCanWrite(value) {writeEnabled=Boolean(value);render();},
+  return { render, reset, hasPendingChanges: () => busy || Boolean(draft && snapshot() !== draft.initial), setCanWrite(value) {writeEnabled=Boolean(value);render();},
     openScope(kind,caseKey) { if(navigate(kind==='agenda'?'agenda':'tasks')===false) return; $(`${kind}-case`).value=caseKey;states[kind].page=1;renderKind(kind); },
     openCreate(kind,caseKey) { if(navigate(kind==='agenda'?'agenda':'tasks')===false) return; $(`${kind}-case`).value=caseKey;states[kind].page=1;renderKind(kind);openEditor(kind,null,caseKey); } };
 }
