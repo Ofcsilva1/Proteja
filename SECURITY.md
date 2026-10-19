@@ -1,5 +1,9 @@
 # Segurança
 
+## Importação legada
+
+A callable `importarCaso` está aposentada para escrita nesta versão. Consulte [o contrato e a transição](docs/IMPORTACAO-LEGADA.md). O aplicativo mantém a importação atual por transação; nenhuma função remota é alterada apenas por esta mudança de código.
+
 ## Dados sensíveis
 
 Os registros do PROTEJA podem conter dados pessoais e informações relacionadas à violência. Mantenha o Realtime Database em modo restrito, exija autenticação e conceda acesso somente às pessoas autorizadas pela organização. Não use regras que permitam leitura ou escrita pública, nem trate a chave de configuração do Firebase no navegador como controle de acesso.
