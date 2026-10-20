@@ -1,8 +1,4 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs22"
-  },
   "database": {
     "rules": "database.rules.example.json"
   },
@@ -12,9 +8,6 @@
     },
     "database": {
       "port": 9000
-    },
-    "functions": {
-      "port": 5001
     },
     "ui": {
       "enabled": true

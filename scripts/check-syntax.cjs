@@ -2,7 +2,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {spawnSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
-const excluded=new Set(['node_modules','.git','vendor','fixtures']);
+const excluded=new Set(['node_modules','.git','vendor','fixtures','test-results','.preview-dist']);
 let checked=0;
 function visit(folder){
   for(const entry of fs.readdirSync(folder,{withFileTypes:true})){

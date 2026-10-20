@@ -1,5 +1,7 @@
 # Importar a planilha otimizada
 
+> **Contrato Spark:** importação é exclusiva de administrador nas Rules. Caso, índice e quota quando aplicável são gravados atomicamente, sem Functions. Ver [preparo e limites](SECURITY-SPARK.md).
+
 ## Antes de começar
 
 Use a versão otimizada com as abas **Casos**, **Histórico** e **Sem prontuário**. A aba Casos deve ter os cabeçalhos Prontuário e Entrada no PROTEJA. As abas Original, Consulta, Início, Listas e Conferência não viram novos casos. A versão antiga com Controle Geral não é aceita neste fluxo, para evitar duplicar cadastros e continuações.
@@ -34,7 +36,7 @@ A conta deve existir no Authentication e ter `access/{uid}/active` e `canWrite` 
 
 Linhas sem prontuário não geram identificadores inventados. Históricos sem cadastro correspondente são sinalizados no relatório, sem gravar vínculos presumidos. Prontuários repetidos dentro do arquivo ficam bloqueados até correção; não se escolhe silenciosamente uma linha.
 
-Antes de cada gravação, o site consulta novamente os casos existentes, incluindo os legados. Novos prontuários importados e manuais compartilham `case_{sha256}`, com transação que só cria se a chave estiver vazia. Números com zeros à esquerda usam a mesma identidade sem alterar o valor salvo. Isso protege repetições, retomadas e disputas entre os dois fluxos desta versão. Chaves antigas não são movidas. Não executar versões antigas ou outros escritores durante a migração: não há unicidade global contra chaves arbitrárias ou Admin SDK. A numeração de casos existentes é somente leitura na ficha e exige revisão administrativa para correção. Veja [operação e recuperação](OPERACAO-E-RECUPERACAO.md).
+A interface confere os casos para orientar a prévia. A garantia de unicidade está no índice protegido e na gravação atômica exigida pelas Rules, incluindo as identidades legadas previamente revisadas. Readiness precisa estar liberada administrativamente. A chave hash do cliente não é a garantia de segurança. Veja [contrato Spark](SECURITY-SPARK.md).
 
 As gravações são individuais, não uma transação única de toda a planilha. **Parar após o registro atual** mantém o que foi confirmado e impede os próximos envios. Uma gravação já enviada pode concluir após solicitar a parada ou sair. Em falha, o restante não é enviado; retome selecionando o arquivo novamente. Não feche a aba durante o envio, especialmente com internet instável. O relatório discrimina resultados por aba/linha sem incluir nomes, CPF ou relatos.
 
@@ -42,11 +44,11 @@ As gravações são individuais, não uma transação única de toda a planilha.
 
 Aceita `.xlsx` de até 15 MB, com até 5.000 linhas por aba utilizada e 100 colunas. A leitura é encerrada após 45 segundos. Fórmulas/macros não são executadas: usam-se os resultados salvos no Excel. Erros de fórmula ou ausência de resultado salvo bloqueiam a linha. Abra, recalcule e salve o arquivo no Excel antes de tentar novamente.
 
-Campos seguem os limites das regras propostas: prontuário até 100 caracteres e demais strings até 20.000. Conteúdo maior é sinalizado, nunca cortado. O modelo atual armazena as colunas originais e históricos como strings JSON, compatíveis com essas regras. Histórico maior exige ajustar o modelo de dados e as regras antes de migrar.
+Campos s?o validados pelo servi?o: prontuário até 100 caracteres e demais strings até 20.000. Conteúdo maior é sinalizado, nunca cortado. O modelo atual armazena as colunas originais e históricos como strings JSON, compatíveis com essas regras. Histórico maior exige ajustar o modelo de dados e as regras antes de migrar.
 
 O arquivo inteiro não é enviado ao GitHub ou a um conversor externo. Ao confirmar, somente os registros preparados são enviados ao Firebase configurado, usando a sessão do profissional e as regras do banco. Clientes não podem alterar `access`. O controle visual não substitui regras publicadas e homologadas. A importação não certifica segurança, conformidade, backup ou disponibilidade operacional.
 
-O custo depende de armazenamento e tráfego, incluindo a leitura dos casos existentes. A função não exige Blaze. Monitore **Realtime Database → Uso**. Anexos/imagens não são importados, somente conteúdo das células.
+A versão permanece no Spark, dentro das quotas gratuitas de armazenamento, tráfego e conexões. Não usa Functions nem ativa Blaze. Anexos/imagens não são importados.
 
 ## Validação de desenvolvimento
 

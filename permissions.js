@@ -15,7 +15,8 @@ export function permissionsForAccess(access) {
   return Object.freeze({
     active,
     role,
-    canReadCases: allowed,
+    canAccess: allowed,
+    canReadCases: allowed && CASE_WRITERS.has(role),
     canWriteCases: allowed && CASE_WRITERS.has(role),
     canImport: allowed && role === ROLE.ADMIN
   });

@@ -34,8 +34,35 @@ const databaseModule = [
   'export const runTransaction=async(p,fn)=>{const d=window.__authTest;if(workflowCases){d.workflowAttempts=(d.workflowAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(d.failWorkflow){d.failWorkflow=false;throw {code:"PERMISSION_DENIED"};}const [,caseKey,field]=p.split("/");let row=workflowCases.find(c=>c.key===caseKey);if(!field){if(row&&d.forceCaseConflict){row.data.nomeCriad="Atualização remota fictícia";d.forceCaseConflict=false;d.emitCases();}const value=fn(row?.data??null);if(value===undefined)return {committed:false};if(row)row.data=value;else workflowCases.push({key:caseKey,data:value});d.caseWrites=(d.caseWrites||0)+1;d.emitCases();return {committed:true};}if(!row)throw {code:"PERMISSION_DENIED"};if(d.forceConflict&&row.data[field]){const next=JSON.parse(row.data[field]);next.revisao++;next.observacao="Atualizado por outra pessoa fictícia";row.data[field]=JSON.stringify(next);d.forceConflict=false;d.emitCases();}const value=fn(row.data[field]??null);if(value===undefined)return {committed:false};row.data[field]=value;d.workflowWrites=(d.workflowWrites||0)+1;d.emitCases();return {committed:true};}d.importAttempts=(d.importAttempts||0)+1;await new Promise(r=>setTimeout(r,opts.writeDelay||0));if(opts.failImportAt===d.importAttempts)throw new Error("fixture");const value=fn(stored[p]??null);if(value===undefined)return {committed:false};stored[p]=value;d.imported=Object.values(stored);return {committed:true};};',
   'export const getDatabase=()=>({});export const ref=(_db,p)=>p;',
   'export const push=async()=>{window.__authTest.writes=(window.__authTest.writes||0)+1;};export const update=async()=>{window.__authTest.writes=(window.__authTest.writes||0)+1;};',
-  'export const onValue=(p,cb)=>{const d=window.__authTest;d.subscriptions++;d.workflowCases=workflowCases;d.setReadOnly=v=>{opts.readOnly=v;};d.emitCases=()=>cb({forEach:fn=>workflowCases?workflowCases.forEach(c=>fn({key:c.key,val:()=>c.data})):fn({key:"fake-key",val:()=>({numeroProntuario:"CASE-01",dataEntrada:"2026-10-14",situacaoAtual:"ativo",nomeCriad:"DADO-FICTICIO",detalheOrigem:"DETALHE-FICTICIO"})})});d.emitCases();return()=>{d.unsubscribed++;};};'
+  'export const onValue=(p,cb)=>{const d=window.__authTest;if(p==="atividades"){cb({val:()=>({})});return()=>{};}d.subscriptions++;d.workflowCases=workflowCases;d.setReadOnly=v=>{opts.readOnly=v;};d.emitCases=()=>cb({forEach:fn=>workflowCases?workflowCases.forEach(c=>fn({key:c.key,val:()=>c.data})):fn({key:"fake-key",val:()=>({numeroProntuario:"CASE-01",dataEntrada:"2026-10-14",situacaoAtual:"ativo",nomeCriad:"DADO-FICTICIO",detalheOrigem:"DETALHE-FICTICIO"})})});d.emitCases();return()=>{d.unsubscribed++;};};'
 ].join("\n");
+
+// UI fixtures model storage responses. Authorization is tested in the real RTDB emulator.
+const functionsModule = `
+import {runTransaction} from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js';
+import {caseKey,caseReplacement} from 'https://proteja.test/case-save.js';
+export const getFunctions=()=>({});
+export const httpsCallable=(_functions,name)=>async payload=>{
+ const debug=window.__authTest,uid=debug.auth.currentUser?.uid;
+ debug.remoteCalls??=[];debug.remoteCalls.push({name,payload});
+ if(name==='consultarResumo')return {data:{schema:1,casesRange:'Menos de 10'}};
+ if(name==='salvarAtividade')return {data:await runTransaction('casos/'+payload.caseKey+'/'+payload.field,current=>current===payload.expected?payload.value:undefined)};
+ if(name==='salvarCaso'){
+  const key=payload.caseKey||await caseKey(payload.data.numeroProntuario),now=new Date().toISOString();
+  const data={...payload.data,atualizadoPor:uid,atualizadoEm:now};
+  const result=await runTransaction('casos/'+key,current=>payload.operation==='update'
+   ?caseReplacement(current,payload.expected,data,Object.keys(payload.data))
+   :current===null?{...data,criadoPor:uid,criadoEm:now,origemCadastro:payload.operation==='import'?'planilha':'manual'}:undefined);
+  return {data:result};
+ }
+ throw new Error('Unexpected callable '+name);
+};
+export const createSparkStore=()=>({
+ saveCase:async p=>(await httpsCallable(null,'salvarCaso')(p)).data,
+ saveActivity:async p=>(await httpsCallable(null,'salvarAtividade')(p)).data,
+ sharedSummary:async()=>(await httpsCallable(null,'consultarResumo')({})).data,
+ publishSummary:async()=>{}
+});`;
 
 async function fixture(options = {}) {
   const context = await browser.newContext();
@@ -44,6 +71,7 @@ async function fixture(options = {}) {
     const target = new URL(route.request().url());
     if (target.hostname === "proteja.test") {
       const name = target.pathname.slice(1) || "index.html";
+      if(name==='spark-store.js')return route.fulfill({contentType:'text/javascript',body:functionsModule});
       if (name === "import-worker.js" && options.importBook) return route.fulfill({contentType:"text/javascript",body:'self.onmessage=()=>self.postMessage('+JSON.stringify(options.importBook)+');'});
       const file = path.resolve(root, name);
       if (!file.startsWith(root + path.sep)) return route.abort();
@@ -53,6 +81,7 @@ async function fixture(options = {}) {
     if (target.hostname === "www.gstatic.com" && target.pathname.includes("/firebasejs/")) {
       if (options.loadFail) return route.abort();
       const body = target.pathname.includes("firebase-auth.js") ? authModule
+        : target.pathname.includes("firebase-functions.js") ? functionsModule
         : target.pathname.includes("firebase-database.js") ? databaseModule
         : 'export const initializeApp=()=>({});';
       return route.fulfill({ contentType: "text/javascript", body });
@@ -357,7 +386,7 @@ test('long names reserve arrow space and show their complete text in both themes
       assert.equal(await page.locator('#agenda-case + .workflow-selected-case').textContent(),'24 — '+fullName);
       if(theme==='dark')assert.equal(style.background,'rgb(36, 52, 78)');
     }
-    assert.ok((await page.locator('.app-version').first().textContent()).includes('20261015.3'));
+    assert.ok((await page.locator('.app-version').first().textContent()).includes('20261020.spark1'));
   }finally{await context.close();}
 });
 
@@ -438,8 +467,17 @@ test('write failure preserves the draft for retry under the same item key',async
   }finally{await context.close();}
 });
 test('read-only access and permission revocation block new workflow writes',async()=>{
-  const first=await fixture({workflows:true,readOnly:true});
-  try {await workflowLogin(first.page,true);await first.page.locator('#nav-agenda').click();assert.equal(await first.page.locator('#agenda-new').isDisabled(),true);}finally{await first.context.close();}
+  const first=await fixture({workflows:true,readOnly:true,realBootstrap:true});
+  try {
+    await ready(first.page);await credentials(first.page);await first.page.locator('#btnLogin').click();
+    await first.page.waitForFunction(()=>document.getElementById('shared-summary-value').textContent==='Menos de 10');
+    assert.equal(await first.page.locator('#nav-agenda').isVisible(),false);
+    assert.equal(await first.page.evaluate(()=>window.__authTest.subscriptions),0);
+    assert.equal(await first.page.locator('#list-section').isVisible(),false);
+    assert.equal(await first.page.locator('#case-table tbody tr').count(),0);
+    assert.deepEqual(await first.page.evaluate(()=>window.__authTest.remoteCalls.map(c=>c.name)),['consultarResumo']);
+    if(process.env.PROTEJA_QA_ASSETS) await first.page.screenshot({path:path.join(process.env.PROTEJA_QA_ASSETS,'consulta-security.png'),fullPage:true});
+  }finally{await first.context.close();}
   const {page,context}=await fixture({workflows:true});
   try {
     await workflowLogin(page);await newAppointment(page);await page.evaluate(()=>window.__authTest.setReadOnly(true));
@@ -448,7 +486,7 @@ test('read-only access and permission revocation block new workflow writes',asyn
     assert.equal(await page.locator('#workflow-save').isDisabled(),true);
   }finally{await context.close();}
 });
-test('sign-out clears workflow forms and prevents a pending transaction from writing',async()=>{
+test('sign-out clears workflow forms and ignores an already submitted server response',async()=>{
   const {page,context}=await fixture({workflows:true,writeDelay:300});
   try {
     await workflowLogin(page);await newAppointment(page);await page.locator('#workflow-save').click();
@@ -456,7 +494,7 @@ test('sign-out clears workflow forms and prevents a pending transaction from wri
     await page.evaluate(()=>document.getElementById('btnLogout').click());await page.waitForFunction(()=>document.getElementById('app-wrapper').hidden);
     await page.waitForTimeout(400);
     assert.equal(await page.locator('#workflow-dialog').isVisible(),false);assert.equal(await page.locator('#workflow-owner').inputValue(),'');
-    assert.equal(await page.locator('#agenda-rows tr').count(),0);assert.equal(await page.evaluate(()=>window.__authTest.workflowWrites||0),0);
+    assert.equal(await page.locator('#agenda-rows tr').count(),0);assert.equal(await page.evaluate(()=>window.__authTest.workflowWrites||0),1);
   }finally{await context.close();}
 });
 test('new navigation protects unsaved case edits and reduced motion disables count animation',async()=>{
@@ -514,7 +552,7 @@ test('manual registration blocks a legacy duplicate with different leading zeros
   } finally {await context.close();}
 });
 
-test('sign-out while saving a case cancels the pending transaction',async()=>{
+test('sign-out while saving a case clears the UI and ignores the server response',async()=>{
   const {page,context}=await fixture({workflows:true,writeDelay:300});
   try {
     await workflowLogin(page);await page.locator('.btnEditar').click();
@@ -524,7 +562,7 @@ test('sign-out while saving a case cancels the pending transaction',async()=>{
     await page.waitForTimeout(450);
     assert.equal(await page.locator('#app-wrapper').isVisible(),false);
     assert.equal(await page.locator('#case-save-status').textContent(),'');
-    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),0);
+    assert.equal(await page.evaluate(()=>window.__authTest.caseWrites||0),1);
   } finally {await context.close();}
 });
 

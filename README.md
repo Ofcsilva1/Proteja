@@ -1,18 +1,20 @@
 # PROTEJA — Gestão de Casos
 
-Aplicação web estática para cadastro e acompanhamento de prontuários. A interface usa Firebase Authentication e Firebase Realtime Database.
+> **Segurança no Spark:** Auth e Realtime Database com Rules autoritativas, sem Functions ou faturamento. Novas criações e edições legadas têm preparo administrativo obrigatório. Veja [contrato e limites](docs/SECURITY-SPARK.md). Esta PR não publica recursos.
+
+Aplicação web estática para cadastro e acompanhamento de prontuários. A interface usa Firebase Authentication e Realtime Database; autorização e validação ocorrem nas Security Rules.
 
 ## Executar
 
-Abra `index.html` por um servidor web local ou publique os arquivos estáticos em um host HTTPS. O site não exige compilação: Firebase, Bootstrap, ícones e bibliotecas de exportação são carregados por CDN. O package.json e o pnpm-lock.yaml são usados apenas nos testes de desenvolvimento.
+Abra `index.html` por um servidor web local ou publique os arquivos estáticos em um host HTTPS. A interface não exige compilação: Firebase, Bootstrap, ícones e bibliotecas de exportação são carregados por CDN. Não há backend próprio nesta versão. Use npm ci e o lockfile versionado para testes.
 
 Para autenticação e persistência dos casos funcionarem, o projeto Firebase configurado em `script.js` precisa estar ativo. As contas devem ser provisionadas pela administração no Firebase; não há cadastro público na interface. O login usa sessão apenas em memória: abrir/recarregar a página exige autenticar novamente, inclusive para eliminar sessões persistentes da versão antiga. A preferência de tema continua salva.
 
 ## Atualização e recuperação do acesso
 
-A versão da interface aparece no login e no menu. A versão 20261014.1 inclui a busca única, filtros em largura completa e campos destacados no tema escuro. Se o site ainda mostrar as duas buscas antigas, tente Ctrl + Shift + R e confira se a publicação terminou no GitHub Pages. Incorporar um PR e atualizar a publicação são etapas distintas; uma aba já aberta pode continuar com arquivos anteriores.
+A versão 20261020.spark1 usa gravações protegidas por Rules e resumo publicado manualmente para consulta. Interface, regras e preparo dos legados precisam de homologação coordenada antes de publicação. Incorporar a PR não publica recursos.
 
-Os arquivos locais de interface e seus imports usam `?v=20261014.1` para evitar reaproveitar arquivos das versões anteriores. Em futuras entregas, atualize esse identificador em conjunto no HTML e nos imports locais. Isso depende de a hospedagem servir o HTML atualizado; não elimina todos os caches de rede. “Recarregar acesso” acrescenta uma referência nova à URL da página, sem apagar preferências ou dados.
+O HTML carrega script.js e o módulo de permissões atualizado com `?v=20261020.spark1`. Os módulos sem alterações preservam seus identificadores anteriores. A hospedagem precisa servir o HTML atualizado; isso não elimina todos os caches de rede. “Recarregar acesso” acrescenta uma referência nova à URL da página, sem apagar preferências ou dados.
 
 O acesso depende também dos serviços externos de autenticação. A preparação da sessão tem limite de 15 segundos e mantém o login bloqueado se falhar; uma conclusão tardia não libera o sistema. Mensagens de falha não presumem que a internet do usuário caiu. Nenhuma senha ou prontuário é enviado ao diagnóstico.
 
