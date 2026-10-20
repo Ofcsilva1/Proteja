@@ -1,0 +1,13 @@
+{
+  "functions": {"source":"functions","runtime":"nodejs22"},
+  "database": {"rules":"database.rules.example.json"},
+  "emulators": {
+    "auth":{"host":"127.0.0.1","port":19099},
+    "database":{"host":"127.0.0.1","port":19000},
+    "functions":{"host":"127.0.0.1","port":15001},
+    "hub":{"host":"127.0.0.1","port":14400},
+    "logging":{"host":"127.0.0.1","port":14500},
+    "ui":{"enabled":false},
+    "singleProjectMode":true
+  }
+}

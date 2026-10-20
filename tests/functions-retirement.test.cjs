@@ -14,11 +14,12 @@ function callable(access={active:true,role:'administrador'}) {
   }};
   const exports={};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../functions/index.js'),'utf8'),{
-    exports,Buffer,require(name){
+    exports,Buffer,process:{env:{}},require(name){
       if(name==='firebase-admin/app')return {initializeApp:()=>({})};
       if(name==='firebase-admin/database')return {getDatabase:()=>database};
       if(name==='firebase-functions/v2/https')return {HttpsError,onCall:(_options,handler)=>handler};
       if(name==='node:crypto')return require(name);
+      if(name==='./service.cjs')return require('../functions/service.cjs');
       throw new Error(`Unexpected dependency ${name}`);
     }
   });

@@ -1,18 +1,20 @@
 # PROTEJA — Gestão de Casos
 
-Aplicação web estática para cadastro e acompanhamento de prontuários. A interface usa Firebase Authentication e Firebase Realtime Database.
+> **Contrato de segurança atualizado:** gravações passam por Functions; regras negam escrita direta e consulta recebe resumo em faixas. Implantação exige Blaze e publicação coordenada. Veja [segurança e operação](docs/SECURITY-HARDENING.md). Esta PR não publica recursos.
+
+Aplicação web estática para cadastro e acompanhamento de prontuários. A interface usa Firebase Authentication, Realtime Database e Cloud Functions para gravações e resumo compartilhável.
 
 ## Executar
 
-Abra `index.html` por um servidor web local ou publique os arquivos estáticos em um host HTTPS. O site não exige compilação: Firebase, Bootstrap, ícones e bibliotecas de exportação são carregados por CDN. O package.json e o pnpm-lock.yaml são usados apenas nos testes de desenvolvimento.
+Abra `index.html` por um servidor web local ou publique os arquivos estáticos em um host HTTPS. A interface não exige compilação: Firebase, Bootstrap, ícones e bibliotecas de exportação são carregados por CDN. O backend está em `functions/`; gravações e resumo dependem das callables dessa versão. Use `npm ci` com os lockfiles versionados para testes e homologação.
 
 Para autenticação e persistência dos casos funcionarem, o projeto Firebase configurado em `script.js` precisa estar ativo. As contas devem ser provisionadas pela administração no Firebase; não há cadastro público na interface. O login usa sessão apenas em memória: abrir/recarregar a página exige autenticar novamente, inclusive para eliminar sessões persistentes da versão antiga. A preferência de tema continua salva.
 
 ## Atualização e recuperação do acesso
 
-A versão da interface aparece no login e no menu. A versão 20261014.1 inclui a busca única, filtros em largura completa e campos destacados no tema escuro. Se o site ainda mostrar as duas buscas antigas, tente Ctrl + Shift + R e confira se a publicação terminou no GitHub Pages. Incorporar um PR e atualizar a publicação são etapas distintas; uma aba já aberta pode continuar com arquivos anteriores.
+A versão da interface aparece no login e no menu. A versão 20261020.security1 usa gravações no servidor e resumo compartilhável para consulta. Incorporar uma PR e publicar os recursos são etapas distintas; uma aba já aberta pode continuar com arquivos anteriores. A publicação desta versão exige janela coordenada com regras e Functions.
 
-Os arquivos locais de interface e seus imports usam `?v=20261014.1` para evitar reaproveitar arquivos das versões anteriores. Em futuras entregas, atualize esse identificador em conjunto no HTML e nos imports locais. Isso depende de a hospedagem servir o HTML atualizado; não elimina todos os caches de rede. “Recarregar acesso” acrescenta uma referência nova à URL da página, sem apagar preferências ou dados.
+O HTML carrega script.js e o módulo de permissões atualizado com `?v=20261020.security1`. Os módulos sem alterações preservam seus identificadores anteriores. A hospedagem precisa servir o HTML atualizado; isso não elimina todos os caches de rede. “Recarregar acesso” acrescenta uma referência nova à URL da página, sem apagar preferências ou dados.
 
 O acesso depende também dos serviços externos de autenticação. A preparação da sessão tem limite de 15 segundos e mantém o login bloqueado se falhar; uma conclusão tardia não libera o sistema. Mensagens de falha não presumem que a internet do usuário caiu. Nenhuma senha ou prontuário é enviado ao diagnóstico.
 

@@ -1,5 +1,6 @@
 // Preview-only adapter. No SDK, credentials, remote requests or persistent storage.
 import { buildActivity, todayISO } from '../workflow-core.js';
+import { caseKey, caseReplacement } from '../case-save.js';
 
 const today = todayISO();
 const auth = { currentUser: null };
@@ -35,6 +36,18 @@ function valueAt(path) {
 function emit() { for (const { path, callback } of subscriptions) callback(snapshot(valueAt(path))); }
 export const initializeApp = () => ({ preview: true });
 export const getDatabase = () => ({ preview: true });
+export const getFunctions = () => ({ preview: true });
+export const httpsCallable = (_functions, name) => async payload => {
+  if (!auth.currentUser) throw new Error('Sessão de demonstração encerrada.');
+  if (name === 'consultarResumo') return {data:{schema:1,casesRange:'Menos de 10'}};
+  if (name === 'salvarAtividade') return {data:await runTransaction(`casos/${payload.caseKey}/${payload.field}`, current => current === payload.expected ? payload.value : undefined)};
+  if (name !== 'salvarCaso') throw new Error('Operação desconhecida na demonstração.');
+  const key=payload.caseKey||await caseKey(payload.data.numeroProntuario),now=new Date().toISOString(),uid=auth.currentUser.uid;
+  const data={...payload.data,atualizadoPor:uid,atualizadoEm:now};
+  return {data:await runTransaction(`casos/${key}`, current => payload.operation === 'update'
+    ? caseReplacement(current,payload.expected,data,Object.keys(payload.data))
+    : current===null ? {...data,criadoPor:uid,criadoEm:now,origemCadastro:payload.operation==='import'?'planilha':'manual'} : undefined)};
+};
 export const getAuth = () => auth;
 export const inMemoryPersistence = { type: 'NONE' };
 export const setPersistence = async () => {};

@@ -10,7 +10,7 @@ test('requires an active account and a recognized role', () => {
 
 test('administrator can read, write cases, and import', () => {
   assert.deepEqual(permissionsForAccess({ active: true, role: ROLE.ADMIN }), {
-    active: true, role: ROLE.ADMIN, canReadCases: true, canWriteCases: true, canImport: true
+    active: true, role: ROLE.ADMIN, canAccess: true, canReadCases: true, canWriteCases: true, canImport: true
   });
 });
 
@@ -23,8 +23,8 @@ test('coordinator and technician can write cases but cannot use import workflow'
   }
 });
 
-test('consultation role is read-only', () => {
+test('consultation can enter but cannot read raw cases', () => {
   assert.deepEqual(permissionsForAccess({ active: true, role: ROLE.VIEWER }), {
-    active: true, role: ROLE.VIEWER, canReadCases: true, canWriteCases: false, canImport: false
+    active: true, role: ROLE.VIEWER, canAccess: true, canReadCases: false, canWriteCases: false, canImport: false
   });
 });

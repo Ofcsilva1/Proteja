@@ -13,30 +13,14 @@ test('example denies raw cases to consultation, inactive, unknown and anonymous 
   assert.equal(rules.access.$uid['.write'],false);
 });
 
-test('professionals can update imported legacy cases but only admin creates imports',()=>{
-  const expression=rules.casos.$caseId['.write'];
-  const key='import_'+'a'.repeat(64),old={numeroProntuario:'5',dataEntrada:'2026-10-15'};
-  for(const role of ['coordenador','tecnico']){
-    assert.equal(evaluate(expression,{role,key,old}),true);
-    assert.equal(evaluate(expression,{role,key}),false);
-    assert.equal(evaluate(expression,{role,next:{...old,origemCadastro:'planilha'}}),false);
-    assert.equal(evaluate(expression,{role,next:{...old,origemCadastro:'manual'}}),true);
-  }
-  assert.equal(evaluate(expression,{role:'administrador',key}),true);
-  assert.equal(evaluate(expression,{role:'consulta',old}),false);
-  assert.equal(evaluate(expression,{next:null,old}),false);
-});
-
-test('existing number and declared origin are immutable for client updates',()=>{
-  const number=rules.casos.$caseId.numeroProntuario['.validate'];
-  assert.equal(evaluate(number,{old:'5',next:'6'}),false);
-  assert.equal(evaluate(number,{old:'5',next:'5'}),true);
-  assert.equal(evaluate(number,{old:null,next:'5'}),true);
-  const origin=rules.casos.$caseId.origemCadastro['.validate'];
-  assert.equal(evaluate(origin,{old:'planilha',next:'manual'}),false);
-  assert.equal(evaluate(origin,{old:'planilha',next:'planilha'}),true);
-  assert.equal(evaluate(origin,{old:null,next:'inventado'}),false);
-  const old={numeroProntuario:'5',dataEntrada:'2026-10-15',origemCadastro:'planilha'};
-  assert.equal(evaluate(rules.casos.$caseId['.validate'],{old,next:{numeroProntuario:'5',dataEntrada:'2026-10-15'}}),false);
-  assert.equal(evaluate(rules.casos.$caseId['.validate'],{old,next:{...old}}),true);
+test('all client writes are denied, including access, cases and quota counters',()=>{
+  const visit=node=>{
+    for(const [key,value] of Object.entries(node)) {
+      if(key==='.write')assert.equal(value,false);
+      else if(value&&typeof value==='object')visit(value);
+    }
+  };
+  visit(rules);
+  assert.equal(rules['.write'],false);
+  assert.equal(rules.casos['.write'],false);
 });

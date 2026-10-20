@@ -4,3 +4,7 @@ test-results/
 
 
 .preview-dist/
+*-debug.log
+.firebase/
+security-run.log
+browser-run.log

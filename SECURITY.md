@@ -2,7 +2,7 @@
 
 ## Importação legada
 
-A callable `importarCaso` está aposentada para escrita nesta versão. Consulte [o contrato e a transição](docs/IMPORTACAO-LEGADA.md). O aplicativo mantém a importação atual por transação; nenhuma função remota é alterada apenas por esta mudança de código.
+A callable `importarCaso` está aposentada para escrita nesta versão. Consulte [o contrato e a transição](docs/IMPORTACAO-LEGADA.md). O aplicativo usa `salvarCaso` para gravações validadas no servidor; nenhuma função remota é alterada apenas por esta mudança de código.
 
 ## Dados sensíveis
 
@@ -19,4 +19,4 @@ Não publique dados de casos, credenciais ou detalhes exploráveis em issues pú
 
 ## Cargos e homologação
 
-A proposta de autorização por cargo está documentada em [docs/RBAC.md](docs/RBAC.md). O exemplo usa `access/{uid}/active` e `role`; clientes não alteram seus perfis. Novas importações e cadastros manuais compartilham a chave `casos/case_{sha256}`; registros legados não são movidos. O modelo reserva a criação declarada como planilha ao administrador e permite editar casos importados existentes aos profissionais autorizados. A importação não depende de Cloud Functions nem de Blaze. Consulta filtrada, auditoria confiável e backup automático permanecem etapas de implantação. Estes arquivos não alteram regras publicadas ou faturamento. Veja [limites e recuperação](docs/OPERACAO-E-RECUPERACAO.md).
+A autorização atual, os testes fictícios e os limites operacionais estão em [docs/SECURITY-HARDENING.md](docs/SECURITY-HARDENING.md). Gravações passam por Functions com validação no servidor; as regras propostas negam escrita direta. Consulta recebe somente resumo em faixas. A implantação exige Blaze e publicação coordenada de regras, Functions e frontend, com autorização específica. Incorporar a PR não publica recursos.
