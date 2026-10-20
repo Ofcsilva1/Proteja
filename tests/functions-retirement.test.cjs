@@ -19,7 +19,6 @@ function callable(access={active:true,role:'administrador'}) {
       if(name==='firebase-admin/database')return {getDatabase:()=>database};
       if(name==='firebase-functions/v2/https')return {HttpsError,onCall:(_options,handler)=>handler};
       if(name==='node:crypto')return require(name);
-      if(name==='./service.cjs')return require('../functions/service.cjs');
       throw new Error(`Unexpected dependency ${name}`);
     }
   });

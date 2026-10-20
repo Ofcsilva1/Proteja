@@ -1,12 +1,12 @@
 # Preparação para implantação e entrega ao TI
 
-O contrato atual de gravação, consulta, custos, limites e reversão está em [SECURITY-HARDENING.md](SECURITY-HARDENING.md). O cliente chama Functions; regras negam escrita direta. Autoria e horários novos vêm do servidor. Operações já enviadas podem concluir após logout, mas respostas atrasadas não reabrem a interface.
+O contrato vigente é [Spark](SECURITY-SPARK.md), sem Functions. Rules validam cargo, dados, autoria, timestamps, índice e quota. Consulta recebe somente publicação agregada revisada.
 
-Novos casos usam chave canônica compartilhada e checagem transacional também dos legados. Metadados e snapshots anteriores são preservados, sem migração automática. Técnicos e coordenadores têm quota de criação manual; consulta recebe somente resumo em faixas. Publicação exige Functions, regras e frontend coordenados, com plano Blaze e autorização específica.
+Novos cadastros são bloqueados até revisar índice e flags; edições de casos legados também exigem arquivo protegido e liberação individual. Nenhuma migração é executada pelo site. Prepare o artefato offline, revise e obtenha autorização antes de aplicar qualquer alteração administrativa.
 
 ## Backup e restauração
 
-O backup automático nativo do Realtime Database requer Blaze. Esta PR não habilita cobranças, serviços ou agendamento. Antes do uso real, o TI deve configurar cópias completas do banco e das regras, manter o código versionado e definir recuperação de contas e acessos. Exportações filtradas CSV/Excel/PDF não são backup completo.
+O backup automático nativo requer Blaze e não será habilitado sob a restrição Spark. Esta PR não contrata serviços nem agenda operações. Planejar cópias manuais gratuitas e restauração em ambiente isolado. Antes do uso real, o TI deve configurar cópias completas do banco e das regras, manter o código versionado e definir recuperação de contas e acessos. Exportações filtradas CSV/Excel/PDF não são backup completo.
 
 Definir frequência, retenção, armazenamento restrito, responsável principal e substituto, perda máxima de dados aceitável e prazo de recuperação. Verificar o resultado das cópias e executar uma restauração em ambiente isolado antes da entrega. Registrar data do teste, responsável, resultado e contagens de casos, agenda e pendências. Nunca restaurar sobre produção para experimentar.
 

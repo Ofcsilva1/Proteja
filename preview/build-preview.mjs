@@ -15,6 +15,7 @@ for (const name of await readdir(root)) {
 await cp(join(root, 'vendor'), join(output, 'vendor'), { recursive: true });
 await mkdir(join(output, 'preview'), { recursive: true });
 await cp(join(root, 'preview/demo-firebase.js'), join(output, 'preview/demo-firebase.js'));
+await writeFile(join(output,'spark-store.js'),"export {createSparkStore} from './preview/demo-firebase.js';\n");
 await cp(join(root, 'tests/fixtures/bootstrap-5.3.0'), join(output, 'preview/bootstrap'), { recursive: true });
 let script = await readFile(join(root, 'script.js'), 'utf8');
 script = script.replace(/https:\/\/www\.gstatic\.com\/firebasejs\/[^"']+/g, './preview/demo-firebase.js')

@@ -8,9 +8,297 @@
         ".write": false
       }
     },
-    "casos": {
-      ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')",
+    "securityPolicy": {
+      "identityRegistryReady": {
+        ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico'))",
+        ".write": false
+      }
+    },
+    "legadoProtegido": {
+      ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico'))",
       ".write": false
+    },
+    "casos": {
+      ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico'))",
+      "$caseId": {
+        ".write": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')) && newData.exists() && (!data.exists() || data.child('auditoria/schema').val() === 2 || (root.child('securityPolicy/editableCases').child($caseId).val() === true && root.child('legadoProtegido').child($caseId).exists()))",
+        ".validate": "newData.hasChildren([\"numeroProntuario\",\"dataEntrada\",\"origemCadastro\",\"auditoria\"]) && (newData.child('auditoria').hasChildren([\"schema\",\"criacaoVerificada\",\"criadoPor\",\"criadoEmMs\",\"atualizadoPor\",\"atualizadoEmMs\",\"revisao\"]) && newData.child('auditoria').child('schema').val() === 2 && newData.child('auditoria').child('atualizadoPor').val() === auth.uid && newData.child('auditoria').child('atualizadoEmMs').val() === now && newData.child('auditoria').child('revisao').val() === (data.child('auditoria').exists() ? data.child('auditoria').child('revisao').val() + 1 : 1) && (data.child('auditoria').exists() ? (newData.child('auditoria').child('criacaoVerificada').val() === data.child('auditoria').child('criacaoVerificada').val() && newData.child('auditoria').child('criadoPor').val() === data.child('auditoria').child('criadoPor').val() && newData.child('auditoria').child('criadoEmMs').val() === data.child('auditoria').child('criadoEmMs').val()) : (newData.child('auditoria').child('criacaoVerificada').val() === !(data.exists()) && newData.child('auditoria').child('criadoPor').val() === ((data.exists()) ? 'desconhecido' : auth.uid) && newData.child('auditoria').child('criadoEmMs').val() === ((data.exists()) ? 0 : now)))) && (!data.child('dadosPlanilha').exists() || newData.child('dadosPlanilha').val() === data.child('dadosPlanilha').val()) && (!data.child('historicoPlanilha').exists() || newData.child('historicoPlanilha').val() === data.child('historicoPlanilha').val()) && (!data.child('origemImportacao').exists() || newData.child('origemImportacao').val() === data.child('origemImportacao').val()) && (!data.child('criadoPor').exists() || newData.child('criadoPor').val() === data.child('criadoPor').val()) && (!data.child('criadoEm').exists() || newData.child('criadoEm').val() === data.child('criadoEm').val()) && (!data.child('atualizadoPor').exists() || newData.child('atualizadoPor').val() === data.child('atualizadoPor').val()) && (!data.child('atualizadoEm').exists() || newData.child('atualizadoEm').val() === data.child('atualizadoEm').val()) && (data.child('identidade').exists() ? (newData.child('identidade').val() === data.child('identidade').val() && newData.child('prefixoNumerico').val() === data.child('prefixoNumerico').val()) : (data.exists() ? !newData.child('identidade').exists() : true)) && (data.exists() ? (data.child('quota').exists() ? (newData.child('quota/inicioMs').val() === data.child('quota/inicioMs').val() && newData.child('quota/slot').val() === data.child('quota/slot').val()) : !newData.child('quota').exists()) : (root.child('securityPolicy/identityRegistryReady').val() === true && newData.hasChildren(['identidade','prefixoNumerico']) && !root.child('identidades').child(newData.child('identidade').val()).exists() && newData.parent().parent().child('identidades').child(newData.child('identidade').val()).val() === $caseId && ((auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('role').val() === 'administrador') ? !newData.child('quota').exists() : (newData.child('origemCadastro').val() === 'manual' && newData.child('quota').hasChildren(['inicioMs','slot']) && newData.child('quota').child('inicioMs').val() <= now && now < newData.child('quota').child('inicioMs').val() + 3600000 && !root.child('cotasManuais').child(auth.uid).child(newData.child('quota').child('inicioMs').val() + '').child(newData.child('quota').child('slot').val()).exists() && newData.parent().parent().child('cotasManuais').child(auth.uid).child(newData.child('quota').child('inicioMs').val() + '').child(newData.child('quota').child('slot').val()).child('caseId').val() === $caseId && newData.parent().parent().child('cotasManuais').child(auth.uid).child(newData.child('quota').child('inicioMs').val() + '').child(newData.child('quota').child('slot').val()).child('criadoEmMs').val() === now))))",
+        "numeroProntuario": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100 && (data.exists() ? newData.val() === data.val() : newData.val().matches(/^[A-Za-z0-9_-]+$/))"
+        },
+        "dataEntrada": {
+          ".validate": "((newData.isString() && !newData.val().beginsWith('0000-') && newData.val().matches(/^([0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))|([0-9]{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)-02-29)$/))) || (data.exists() && newData.val() === data.val())"
+        },
+        "dataOficioEnc": {
+          ".validate": "newData.val() === '' || ((newData.isString() && !newData.val().beginsWith('0000-') && newData.val().matches(/^([0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))|([0-9]{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)-02-29)$/))) || (data.exists() && newData.val() === data.val())"
+        },
+        "situacaoAtual": {
+          ".validate": "newData.isString() && (newData.val() === '' || newData.val() === 'ativo' || newData.val() === 'suspenso' || newData.val() === 'encerrado_com_protecao' || newData.val() === 'encerrado_sem_protecao' || newData.val() === 'nao_competencia' || (data.exists() && newData.val() === data.val()))"
+        },
+        "origemCadastro": {
+          ".validate": "newData.isString() && (data.exists() ? newData.val() === data.val() : (data.parent().exists() ? newData.val() === 'legado' : (newData.val() === 'manual' || ((auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('role').val() === 'administrador') && newData.val() === 'planilha'))))"
+        },
+        "identidade": {
+          ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9_-]{1,100}$/) && (data.exists() ? newData.val() === data.val() : (newData.parent().child('numeroProntuario').val().matches(/^[0-9]+$/) ? (newData.val().matches(/^(0|[1-9][0-9]*)$/) && newData.parent().child('numeroProntuario').val() === newData.parent().child('prefixoNumerico').val() + newData.val()) : (newData.val() === newData.parent().child('numeroProntuario').val().toUpperCase() && newData.parent().child('prefixoNumerico').val() === '')))"
+        },
+        "prefixoNumerico": {
+          ".validate": "newData.isString() && newData.val().matches(/^0*$/) && newData.val().length <= 99"
+        },
+        "auditoria": {
+          "schema": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+          },
+          "criacaoVerificada": {
+            ".validate": "newData.isBoolean()"
+          },
+          "criadoPor": {
+            ".validate": "newData.isString() && newData.val().length <= 128"
+          },
+          "criadoEmMs": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+          },
+          "atualizadoPor": {
+            ".validate": "newData.isString() && newData.val().length <= 128"
+          },
+          "atualizadoEmMs": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+          },
+          "revisao": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "quota": {
+          ".validate": "newData.hasChildren(['inicioMs','slot'])",
+          "inicioMs": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 3600000 === 0"
+          },
+          "slot": {
+            ".validate": "newData.isString() && newData.val().matches(/^([0-9]|[12][0-9])$/)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "docOrigem": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "origemCaso": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "cor": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "detalheOrigem": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "detalheSituacao": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "nomeCriad": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "responsavelNome": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "responsavelCpf": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "comunicacaoViolencia": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "oficioViolencia": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "encaminhamentosSolicitados": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "detalheEncaminhamento": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "retornoSolicitado": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "infoRetorno": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "estudoCaso": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "piaElaborado": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "outrasPendencias": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "datasTexto": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "tecnicosReferencia": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "tipoViolencia": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "violenciaSexual": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "outrasViolencias": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+        "dadosPlanilha": {
+          ".validate": "newData.isString() && newData.val().length <= 20000 && (data.exists() ? newData.val() === data.val() : (!data.parent().exists() && (auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('role').val() === 'administrador') && newData.parent().child('origemCadastro').val() === 'planilha'))"
+        },
+        "historicoPlanilha": {
+          ".validate": "newData.isString() && newData.val().length <= 20000 && (data.exists() ? newData.val() === data.val() : (!data.parent().exists() && (auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('role').val() === 'administrador') && newData.parent().child('origemCadastro').val() === 'planilha'))"
+        },
+        "origemImportacao": {
+          ".validate": "newData.isString() && newData.val().length <= 20000 && (data.exists() ? newData.val() === data.val() : (!data.parent().exists() && (auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('role').val() === 'administrador') && newData.parent().child('origemCadastro').val() === 'planilha'))"
+        },
+        "criadoPor": {
+          ".validate": "data.exists() && newData.val() === data.val()"
+        },
+        "criadoEm": {
+          ".validate": "data.exists() && newData.val() === data.val()"
+        },
+        "atualizadoPor": {
+          ".validate": "data.exists() && newData.val() === data.val()"
+        },
+        "atualizadoEm": {
+          ".validate": "data.exists() && newData.val() === data.val()"
+        },
+        "$other": {
+          ".validate": "data.exists() && newData.isString() && newData.val() === data.val()"
+        }
+      }
+    },
+    "identidades": {
+      ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico'))",
+      "$identity": {
+        ".write": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')) && !data.exists() && newData.isString() && !root.child('casos').child(newData.val()).exists()",
+        ".validate": "newData.parent().parent().child('casos').child(newData.val()).child('identidade').val() === $identity && newData.parent().parent().child('casos').child(newData.val()).child('auditoria/criadoPor').val() === auth.uid && newData.parent().parent().child('casos').child(newData.val()).child('auditoria/criadoEmMs').val() === now"
+      }
+    },
+    "cotasManuais": {
+      "$uid": {
+        ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')) && auth.uid === $uid",
+        "$window": {
+          "$slot": {
+            ".write": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')) && auth.uid === $uid && root.child('access').child(auth.uid).child('role').val() !== 'administrador' && !data.exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['caseId','criadoEmMs','inicioMs']) && $slot.matches(/^([0-9]|[12][0-9])$/) && $window === newData.child('inicioMs').val() + '' && newData.child('inicioMs').val() <= now && now < newData.child('inicioMs').val() + 3600000 && !root.child('casos').child(newData.child('caseId').val()).exists() && newData.parent().parent().parent().parent().child('casos').child(newData.child('caseId').val()).child('quota/slot').val() === $slot && newData.parent().parent().parent().parent().child('casos').child(newData.child('caseId').val()).child('quota/inicioMs').val() === newData.child('inicioMs').val() && newData.parent().parent().parent().parent().child('casos').child(newData.child('caseId').val()).child('auditoria/criadoPor').val() === auth.uid && newData.parent().parent().parent().parent().child('casos').child(newData.child('caseId').val()).child('auditoria/criadoEmMs').val() === now",
+            "caseId": {
+              ".validate": "newData.isString() && newData.val().matches(/^case_[0-9a-f]{64}$/)"
+            },
+            "criadoEmMs": {
+              ".validate": "newData.val() === now"
+            },
+            "inicioMs": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 3600000 === 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
+    "atividades": {
+      ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico'))",
+      "$caseId": {
+        "$field": {
+          ".write": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico')) && root.child('casos').child($caseId).exists() && newData.exists()",
+          ".validate": "newData.hasChildren([\"schema\",\"kind\",\"responsavel\",\"observacao\",\"situacao\",\"tipo\",\"dataConclusao\",\"auditoria\"]) && newData.child('schema').val() === 1 && (($field.matches(/^agenda_[A-Za-z0-9_-]{1,100}$/) && newData.child('kind').val() === 'agenda') || ($field.matches(/^pendencia_[A-Za-z0-9_-]{1,100}$/) && newData.child('kind').val() === 'tarefas')) && (newData.child('auditoria').hasChildren([\"schema\",\"criacaoVerificada\",\"criadoPor\",\"criadoEmMs\",\"atualizadoPor\",\"atualizadoEmMs\",\"revisao\"]) && newData.child('auditoria').child('schema').val() === 2 && newData.child('auditoria').child('atualizadoPor').val() === auth.uid && newData.child('auditoria').child('atualizadoEmMs').val() === now && newData.child('auditoria').child('revisao').val() === (data.child('auditoria').exists() ? data.child('auditoria').child('revisao').val() + 1 : 1) && (data.child('auditoria').exists() ? (newData.child('auditoria').child('criacaoVerificada').val() === data.child('auditoria').child('criacaoVerificada').val() && newData.child('auditoria').child('criadoPor').val() === data.child('auditoria').child('criadoPor').val() && newData.child('auditoria').child('criadoEmMs').val() === data.child('auditoria').child('criadoEmMs').val()) : (newData.child('auditoria').child('criacaoVerificada').val() === !(false) && newData.child('auditoria').child('criadoPor').val() === ((false) ? 'desconhecido' : auth.uid) && newData.child('auditoria').child('criadoEmMs').val() === ((false) ? 0 : now)))) && (newData.child('kind').val() === 'agenda' ? newData.hasChildren(['data','hora']) && !newData.hasChild('descricao') && !newData.hasChild('prazo') && !newData.hasChild('prioridade') : newData.hasChildren(['descricao','prazo','prioridade']) && !newData.hasChild('data') && !newData.hasChild('hora')) && ((newData.child('situacao').val() === (newData.child('kind').val() === 'agenda' ? 'realizado' : 'concluida')) ? newData.child('dataConclusao').val() !== '' : newData.child('dataConclusao').val() === '')",
+          "schema": {
+            ".validate": "newData.val() === 1"
+          },
+          "kind": {
+            ".validate": "newData.val() === 'agenda' || newData.val() === 'tarefas'"
+          },
+          "responsavel": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+          },
+          "observacao": {
+            ".validate": "newData.isString() && newData.val().length <= 4000"
+          },
+          "situacao": {
+            ".validate": "newData.isString() && (newData.parent().child('kind').val() === 'agenda' ? (newData.val() === 'agendado' || newData.val() === 'realizado' || newData.val() === 'nao_compareceu' || newData.val() === 'cancelado') : (newData.val() === 'aberta' || newData.val() === 'em_andamento' || newData.val() === 'concluida' || newData.val() === 'cancelada'))"
+          },
+          "tipo": {
+            ".validate": "newData.isString() && (newData.parent().child('kind').val() === 'agenda' ? (newData.val() === 'Atenção inicial' || newData.val() === 'Atendimento psicossocial' || newData.val() === 'Orientação jurídico-social' || newData.val() === 'Retorno' || newData.val() === 'Outro') : (newData.val() === 'Documento' || newData.val() === 'Retorno de encaminhamento' || newData.val() === 'Contato com responsável' || newData.val() === 'Outra'))"
+          },
+          "data": {
+            ".validate": "(newData.isString() && !newData.val().beginsWith('0000-') && newData.val().matches(/^([0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))|([0-9]{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)-02-29)$/))"
+          },
+          "hora": {
+            ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches(/^([01][0-9]|2[0-3]):[0-5][0-9]$/))"
+          },
+          "dataConclusao": {
+            ".validate": "newData.val() === '' || ((newData.isString() && !newData.val().beginsWith('0000-') && newData.val().matches(/^([0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))|([0-9]{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)-02-29)$/)))"
+          },
+          "descricao": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 240"
+          },
+          "prazo": {
+            ".validate": "newData.val() === '' || ((newData.isString() && !newData.val().beginsWith('0000-') && newData.val().matches(/^([0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))|([0-9]{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)-02-29)$/)))"
+          },
+          "prioridade": {
+            ".validate": "newData.val() === 'normal' || newData.val() === 'alta'"
+          },
+          "auditoria": {
+            "schema": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "criacaoVerificada": {
+              ".validate": "newData.isBoolean()"
+            },
+            "criadoPor": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            },
+            "criadoEmMs": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "atualizadoPor": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            },
+            "atualizadoEmMs": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "revisao": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "compartilhavel": {
+      "resumo": {
+        ".read": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && (root.child('access').child(auth.uid).child('role').val() === 'administrador' || root.child('access').child(auth.uid).child('role').val() === 'coordenador' || root.child('access').child(auth.uid).child('role').val() === 'tecnico' || root.child('access').child(auth.uid).child('role').val() === 'consulta'))",
+        ".write": "(auth != null && root.child('access').child(auth.uid).child('active').val() === true && root.child('access').child(auth.uid).child('role').val() === 'administrador') && newData.exists()",
+        ".validate": "newData.hasChildren(['schema','faixa','publicadoEmMs','revisao']) && newData.child('schema').val() === 1 && newData.child('publicadoEmMs').val() === now && newData.child('revisao').val() === (data.exists() ? data.child('revisao').val() + 1 : 1)",
+        "schema": {
+          ".validate": "newData.val() === 1"
+        },
+        "faixa": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100000"
+        },
+        "publicadoEmMs": {
+          ".validate": "newData.isNumber() && newData.val() === now"
+        },
+        "revisao": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

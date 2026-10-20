@@ -1,5 +1,5 @@
-# Aposentadoria da callable importarCaso
+# Rota legada importarCaso
 
-A rota legada permanece fechada: exige usuário autenticado e administrador ativo e retorna failed-precondition sem gravar casos. A importação atual usa salvarCaso com operation import, chave canônica e validação autoritativa no servidor.
+A aplicação Spark não chama Functions. firebase.json e o CI não configuram nem publicam Functions. O código histórico da rota aposentada é mantido separado e só recebe teste de regressão em VM. Sua existência local não indica que esteja publicada ou consumindo recursos.
 
-Não remover nem reativar funções remotas automaticamente. Inventariar consumidores antes da implantação autorizada. Ver [implantação coordenada](SECURITY-HARDENING.md). A suíte do Emulator verifica também o endpoint legado.
+Não remover, publicar ou reativar endpoints remotos nesta PR. Inventariar consumidores em uma futura revisão autorizada. A importação atual usa uma atualização atômica no RTDB com Rules autoritativas; consulte [o contrato Spark](SECURITY-SPARK.md).

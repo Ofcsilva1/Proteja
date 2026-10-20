@@ -34,5 +34,4 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm ci --prefix functions --ignore-scripts --no-audit --no-fund
       - run: npm run test:emulator

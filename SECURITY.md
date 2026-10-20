@@ -2,7 +2,7 @@
 
 ## Importação legada
 
-A callable `importarCaso` está aposentada para escrita nesta versão. Consulte [o contrato e a transição](docs/IMPORTACAO-LEGADA.md). O aplicativo usa `salvarCaso` para gravações validadas no servidor; nenhuma função remota é alterada apenas por esta mudança de código.
+A aplicação não chama Functions. A rota histórica importarCaso permanece aposentada e fora da configuração de implantação; ver [transição](docs/IMPORTACAO-LEGADA.md).
 
 ## Dados sensíveis
 
@@ -19,4 +19,4 @@ Não publique dados de casos, credenciais ou detalhes exploráveis em issues pú
 
 ## Cargos e homologação
 
-A autorização atual, os testes fictícios e os limites operacionais estão em [docs/SECURITY-HARDENING.md](docs/SECURITY-HARDENING.md). Gravações passam por Functions com validação no servidor; as regras propostas negam escrita direta. Consulta recebe somente resumo em faixas. A implantação exige Blaze e publicação coordenada de regras, Functions e frontend, com autorização específica. Incorporar a PR não publica recursos.
+O contrato atual é [compatível com Spark](docs/SECURITY-SPARK.md). Auth e Rules validam cargo, autoria, timestamps, calendário, importação, índice e quota. Consulta lê somente resumo revisado. Não habilitar faturamento ou publicar Functions. Publicação de regras e preparo administrativo exigem autorização separada.

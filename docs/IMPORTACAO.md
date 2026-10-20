@@ -1,6 +1,6 @@
 # Importar a planilha otimizada
 
-> **Segurança atual:** somente administrador importa via Function salvarCaso. Origem, autoria, datas e unicidade são controladas pelo servidor. Gravações diretas são negadas. Veja [contrato e implantação](SECURITY-HARDENING.md).
+> **Contrato Spark:** importação é exclusiva de administrador nas Rules. Caso, índice e quota quando aplicável são gravados atomicamente, sem Functions. Ver [preparo e limites](SECURITY-SPARK.md).
 
 ## Antes de começar
 
@@ -36,7 +36,7 @@ A conta deve existir no Authentication e ter `access/{uid}/active` e `canWrite` 
 
 Linhas sem prontuário não geram identificadores inventados. Históricos sem cadastro correspondente são sinalizados no relatório, sem gravar vínculos presumidos. Prontuários repetidos dentro do arquivo ficam bloqueados até correção; não se escolhe silenciosamente uma linha.
 
-Antes de cada gravação, a interface consulta os casos existentes para orientar a prévia. A Function repete a checagem autoritativa em transação, incluindo registros legados e a chave canônica compartilhada. O servidor não move chaves antigas nem permite renumerar registros por essa rota. Outros escritores privilegiados precisam de revisão separada. Veja [operação e recuperação](OPERACAO-E-RECUPERACAO.md).
+A interface confere os casos para orientar a prévia. A garantia de unicidade está no índice protegido e na gravação atômica exigida pelas Rules, incluindo as identidades legadas previamente revisadas. Readiness precisa estar liberada administrativamente. A chave hash do cliente não é a garantia de segurança. Veja [contrato Spark](SECURITY-SPARK.md).
 
 As gravações são individuais, não uma transação única de toda a planilha. **Parar após o registro atual** mantém o que foi confirmado e impede os próximos envios. Uma gravação já enviada pode concluir após solicitar a parada ou sair. Em falha, o restante não é enviado; retome selecionando o arquivo novamente. Não feche a aba durante o envio, especialmente com internet instável. O relatório discrimina resultados por aba/linha sem incluir nomes, CPF ou relatos.
 
@@ -48,7 +48,7 @@ Campos s?o validados pelo servi?o: prontuário até 100 caracteres e demais stri
 
 O arquivo inteiro não é enviado ao GitHub ou a um conversor externo. Ao confirmar, somente os registros preparados são enviados ao Firebase configurado, usando a sessão do profissional e as regras do banco. Clientes não podem alterar `access`. O controle visual não substitui regras publicadas e homologadas. A importação não certifica segurança, conformidade, backup ou disponibilidade operacional.
 
-O custo depende de armazenamento, tráfego, transações e execução das Functions. Esta versão exige Blaze para implantação das Functions, com decisão e publicação separadas. Monitore o uso de Realtime Database e Functions em homologação. Anexos/imagens não são importados, somente conteúdo das células.
+A versão permanece no Spark, dentro das quotas gratuitas de armazenamento, tráfego e conexões. Não usa Functions nem ativa Blaze. Anexos/imagens não são importados.
 
 ## Validação de desenvolvimento
 

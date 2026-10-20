@@ -36,8 +36,7 @@ function valueAt(path) {
 function emit() { for (const { path, callback } of subscriptions) callback(snapshot(valueAt(path))); }
 export const initializeApp = () => ({ preview: true });
 export const getDatabase = () => ({ preview: true });
-export const getFunctions = () => ({ preview: true });
-export const httpsCallable = (_functions, name) => async payload => {
+const demoOperation = name => async payload => {
   if (!auth.currentUser) throw new Error('Sessão de demonstração encerrada.');
   if (name === 'consultarResumo') return {data:{schema:1,casesRange:'Menos de 10'}};
   if (name === 'salvarAtividade') return {data:await runTransaction(`casos/${payload.caseKey}/${payload.field}`, current => current === payload.expected ? payload.value : undefined)};
@@ -48,6 +47,12 @@ export const httpsCallable = (_functions, name) => async payload => {
     ? caseReplacement(current,payload.expected,data,Object.keys(payload.data))
     : current===null ? {...data,criadoPor:uid,criadoEm:now,origemCadastro:payload.operation==='import'?'planilha':'manual'} : undefined)};
 };
+export const createSparkStore=()=>({
+  saveCase:async data=>(await demoOperation('salvarCaso')(data)).data,
+  saveActivity:async data=>(await demoOperation('salvarAtividade')(data)).data,
+  sharedSummary:async()=>({published:true,casesRange:'Menos de 10'}),
+  publishSummary:async()=>{}
+});
 export const getAuth = () => auth;
 export const inMemoryPersistence = { type: 'NONE' };
 export const setPersistence = async () => {};

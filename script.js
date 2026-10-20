@@ -1,7 +1,7 @@
 import { setupFormFeedback } from './form-feedback.js?v=20261015.3';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { hasDuplicate } from "./case-save.js?v=20261015.3";
-import { permissionsForAccess } from "./permissions.js?v=20261020.security1";
+import { permissionsForAccess } from "./permissions.js?v=20261020.spark1";
 import { setupExports } from "./exports.js?v=20261015.3";
 import { setupImport, appendImportedDetails } from "./import-ui.js?v=20261015.3";
 import { readableSnapshot } from "./import-core.js?v=20261015.3";
@@ -12,7 +12,8 @@ import { setupWorkflows } from "./workflow-ui.js?v=20261015.3";
 import { activityText, attendanceSummary } from "./workflow-core.js?v=20261015.3";
 import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, setPersistence, inMemoryPersistence, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-functions.js";
+import {createSparkStore} from './spark-store.js?v=20261020.spark1';
+import {casesWithActivities} from './spark-policy.js?v=20261020.spark1';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBNQqq67cuuDetOJZR2EcCkH4JNXOxNW3Y",
@@ -28,10 +29,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const auth = getAuth(app);
-const functions = getFunctions(app, 'us-central1');
-const saveCaseRemote = httpsCallable(functions, 'salvarCaso');
-const saveActivityRemote = httpsCallable(functions, 'salvarAtividade');
-const sharedSummaryRemote = httpsCallable(functions, 'consultarResumo');
+const sparkStore = createSparkStore(database,auth);
 const PAGE_SIZE = 10;
 let permissions = permissionsForAccess(null);
 
@@ -67,6 +65,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let editingBase = null;
   let savingCase = false;
   let unsubscribeCases = null;
+  let unsubscribeActivities = null;
+  let baseCases = [];
+  let activities = {};
+  let casesLoaded = false;
   let caseDraft = null;
   let authEpoch = 0;
   const caseSnapshot = () => JSON.stringify([...caseForm.querySelectorAll('input,select,textarea')].map(input => [input.id, input.value, input.checked]));
@@ -108,6 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function firebaseMessage(error) {
+    if(error?.code === 'spark/validation') return error.message;
     const messages = {
       "auth/email-already-in-use": "Este e-mail já está cadastrado.",
       "auth/invalid-email": "Informe um e-mail válido.",
@@ -247,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
         payload.caseKey = key;
         payload.expected = Object.fromEntries(Object.keys(fieldMap).filter(k => typeof expected[k] === 'string').map(k => [k, expected[k]]));
       }
-      const { data: result } = await saveCaseRemote(payload);
+      const result = await sparkStore.saveCase(payload);
       if (auth.currentUser?.uid !== uid || authEpoch !== epoch) return;
       if (!result.committed) {
         const message = key ? "O caso foi alterado por outra pessoa. Suas alterações continuam no formulário. Confira o registro atualizado antes de tentar novamente."
@@ -397,7 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveActivity: async ({caseKey,field,value,expected,uid}) => {
       const epoch=authEpoch;
       if (auth.currentUser?.uid !== uid) throw new Error('Entre novamente para salvar.');
-      const {data:result}=await saveActivityRemote({caseKey,field,value,expected});
+      const result=await sparkStore.saveActivity({caseKey,field,value,expected});
       return auth.currentUser?.uid===uid&&authEpoch===epoch&&result.committed;
     }
   });
@@ -440,7 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (auth.currentUser?.uid !== uid || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
       if (hasDuplicate(await readSavedCases(), data.numeroProntuario)) return false;
       if (auth.currentUser?.uid !== uid || authEpoch !== epoch || !permissions.canImport) throw new Error("Sessão encerrada ou perfil sem permissão");
-      const {data:result}=await saveCaseRemote({operation:'import',data});
+      const result=await sparkStore.saveCase({operation:'import',data});
       if (auth.currentUser?.uid !== uid) throw new Error("Sessão encerrada");
       return result.committed;
     }
@@ -449,6 +452,10 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleAuthState(user) {
     const epoch = ++authEpoch;
     if (unsubscribeCases) { unsubscribeCases(); unsubscribeCases = null; }
+    if (unsubscribeActivities) { unsubscribeActivities(); unsubscribeActivities = null; }
+    baseCases = []; activities = {};
+    casesLoaded = false;
+    $('btnPublishSummary').disabled = true;
     workflows.setCanWrite(false);
     authWrapper.hidden = false;
     appWrapper.hidden = true;
@@ -498,6 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
       $("nav-new").hidden = !permissions.canWriteCases;
       $("btnEmptyNew").hidden = !permissions.canWriteCases;
       $("btnImport").hidden = !permissions.canImport;
+      $('btnPublishSummary').hidden = permissions.role !== 'administrador';
       workflows.setCanWrite(permissions.canWriteCases);
     } catch {
       if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
@@ -517,21 +525,37 @@ document.addEventListener("DOMContentLoaded", () => {
       await loadSharedSummary(user.uid, epoch);
       return;
     }
-    unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
-      if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
-      cases = [];
-      snapshot.forEach((child) => {
-        const data = child.val();
-        if (data && data.numeroProntuario) cases.push({ key: child.key, rawData: data, data: resolveViolenceData(data) });
-      });
+    const refreshCases = () => {
+      cases = casesWithActivities(baseCases,activities);
       const selectedYear = $("filtroAno").value;
       const years = availableYears(cases);
       $("filtroAno").replaceChildren(new Option("Todos os anos", ""), ...years.map(year => new Option(year, year)));
       $("filtroAno").value = years.includes(selectedYear) ? selectedYear : "";
       if (selectedYear && !years.includes(selectedYear)) page = 1;
-      syncViolenceOptions();
-      render();
+      syncViolenceOptions(); render();
+    };
+    unsubscribeActivities = onValue(ref(database,'atividades'),snapshot=>{
+      if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
+      activities=snapshot.val()||{}; refreshCases();
+    },()=>{
+      if(auth.currentUser?.uid!==user.uid||authEpoch!==epoch)return;
+      casesLoaded=false;$('btnPublishSummary').disabled=true;
+      activities={};cases=[];baseCases=[];render();notify('Não foi possível carregar a agenda. Confira seu acesso.','danger');
+    });
+    unsubscribeCases = onValue(ref(database, "casos"), (snapshot) => {
+      if (auth.currentUser?.uid !== user.uid || authEpoch !== epoch) return;
+      baseCases = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        if (data && data.numeroProntuario) baseCases.push({ key: child.key, rawData: data, data: resolveViolenceData(data) });
+      });
+      casesLoaded = true;
+      $('btnPublishSummary').disabled = false;
+      refreshCases();
     }, (error) => {
+      if(auth.currentUser?.uid!==user.uid||authEpoch!==epoch)return;
+      casesLoaded = false;
+      $('btnPublishSummary').disabled = true;
       cases = []; editingKey = null; editingBase = null; caseDraft = null; caseForm.reset(); violenceForm.fill({});
       workflows.reset(); toggleView("list", true); render(); notify(firebaseMessage(error), "danger");
     });
@@ -542,10 +566,10 @@ document.addEventListener("DOMContentLoaded", () => {
     $('shared-summary-value').textContent = '';
     $('btnSharedRefresh').disabled = true;
     try {
-      const {data} = await sharedSummaryRemote({});
+      const data = await sparkStore.sharedSummary();
       if (auth.currentUser?.uid !== uid || authEpoch !== epoch) return;
-      $('shared-summary-value').textContent = data.casesRange;
-      $('shared-summary-status').textContent = '';
+      $('shared-summary-value').textContent = data.casesRange||'';
+      $('shared-summary-status').textContent = data.published===false?'O administrador ainda não publicou um resumo compartilhável.':'';
     } catch {
       if (auth.currentUser?.uid !== uid || authEpoch !== epoch) return;
       $('shared-summary-status').textContent = 'Não foi possível consultar o resumo. Confira seu acesso e tente novamente.';
@@ -555,6 +579,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   $('btnSharedRefresh').addEventListener('click', () => {
     if (auth.currentUser && permissions.role === 'consulta') loadSharedSummary(auth.currentUser.uid, authEpoch);
+  });
+  $('btnPublishSummary').addEventListener('click',async()=>{
+    const uid=auth.currentUser?.uid;
+    if(!uid||permissions.role!=='administrador'||!casesLoaded)return;
+    const faixa=Math.floor(cases.length/10);
+    if(!window.confirm(`Publicar o total em faixa (${faixa===0?'menos de 10':`${faixa*10} a ${faixa*10+9}`}) para consulta, sem dados individuais?`))return;
+    $('btnPublishSummary').disabled=true;
+    try {await sparkStore.publishSummary(cases.length);if(auth.currentUser?.uid===uid)notify('Resumo compartilhável publicado.','success');}
+    catch {if(auth.currentUser?.uid===uid)notify('Não foi possível publicar. Confira seu acesso e tente novamente.','danger');}
+    finally {$('btnPublishSummary').disabled=false;}
   });
 
   async function initializeSession() {

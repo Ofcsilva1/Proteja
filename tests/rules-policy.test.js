@@ -13,14 +13,11 @@ test('example denies raw cases to consultation, inactive, unknown and anonymous 
   assert.equal(rules.access.$uid['.write'],false);
 });
 
-test('all client writes are denied, including access, cases and quota counters',()=>{
-  const visit=node=>{
-    for(const [key,value] of Object.entries(node)) {
-      if(key==='.write')assert.equal(value,false);
-      else if(value&&typeof value==='object')visit(value);
-    }
-  };
-  visit(rules);
+test('no broad client grants; profile, archive and rollout flags remain privileged',()=>{
   assert.equal(rules['.write'],false);
-  assert.equal(rules.casos['.write'],false);
+  assert.equal(rules.casos['.write'],undefined);
+  assert.equal(rules.access.$uid['.write'],false);
+  assert.equal(rules.legadoProtegido['.write'],false);
+  assert.equal(rules.securityPolicy.identityRegistryReady['.write'],false);
+  assert.ok(rules.casos.$caseId['.write'].includes('newData.exists()'));
 });

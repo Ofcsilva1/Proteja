@@ -1,160 +1,230 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url);
-const {caseKey}=require('../../functions/service.cjs');
+import {caseKey} from '../../case-save.js';
+import {identityFields,auditFor,activityForDisplay} from '../../spark-policy.js';
+import {createSparkStore} from '../../spark-store-core.js';
+import {initializeApp,deleteApp} from 'firebase/app';
+import {getAuth,connectAuthEmulator,signInWithEmailAndPassword,signOut} from 'firebase/auth';
+import * as databaseAPI from 'firebase/database';
+import {buildActivity} from '../../workflow-core.js';
 const project='demo-proteja-security',ns=project+'-default-rtdb';
 assert.equal(process.env.GCLOUD_PROJECT,project);
 assert.equal(process.env.FIREBASE_AUTH_EMULATOR_HOST,'127.0.0.1:19099');
 assert.equal(process.env.FIREBASE_DATABASE_EMULATOR_HOST,'127.0.0.1:19000');
-const results=[],accounts={};
-async function request(url,{method='GET',body,token,owner=false}={}) {
-  const u=new URL(url);assert.equal(u.hostname,'127.0.0.1');assert.equal(u.protocol,'http:');assert.ok(['19000','19099','15001'].includes(u.port));
-  const headers={'content-type':'application/json'};
-  if(token)headers.authorization='Bearer '+token;
-  if(owner)headers.authorization='Bearer owner';
-  const response=await fetch(u,{method,headers,body:body===undefined?undefined:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(30000)});
-  return {status:response.status,body:await response.json()};
+const stamp=()=>({'.sv':'timestamp'}),accounts={},results=[];
+const start=()=>Math.floor(Date.now()/3600000)*3600000;
+async function local(url,{method='GET',body,owner=false}={}) {
+  const u=new URL(url);assert.equal(u.protocol,'http:');assert.equal(u.hostname,'127.0.0.1');assert.ok(['19099','19000'].includes(u.port));
+  const r=await fetch(u,{method,headers:{'content-type':'application/json',...(owner?{authorization:'Bearer owner'}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(15000)});
+  return {status:r.status,body:await r.json()};
 }
 async function db(actor,method,path,body) {
-  const u=new URL(`http://127.0.0.1:19000/${path}.json`);u.searchParams.set('ns',ns);
-  if(accounts[actor])u.searchParams.set('auth',accounts[actor].token);
-  return request(u,{method,body,owner:actor==='seed'});
+  const url=new URL(`http://127.0.0.1:19000/${path}.json`);url.searchParams.set('ns',ns);
+  if(accounts[actor])url.searchParams.set('auth',accounts[actor].token);
+  return local(url,{method,body,owner:actor==='seed'});
 }
-async function call(actor,name,data) {
-  return request(`http://127.0.0.1:15001/${project}/us-central1/${name}`,{method:'POST',token:accounts[actor]?.token,body:{data}});
+const allowed=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
+const denied=r=>{assert.equal(r.status,401,JSON.stringify(r.body));assert.equal(r.body.error,'Permission denied');};
+async function test(name,run) {await run();results.push({name,result:'passed'});console.log('PASS '+name);}
+const input=number=>({numeroProntuario:number,dataEntrada:'2026-10-20',nomeCriad:'PESSOA FICTICIA',responsavelCpf:'000.000.000-00'});
+async function creation(actor,number,{slot='0',origin='manual',key,window=start()}={}) {
+  key??=await caseKey(number);const id=identityFields(number),uid=accounts[actor].uid;
+  const record={...input(number),...id,origemCadastro:origin,auditoria:auditFor(null,uid,stamp())};
+  const patch={[`casos/${key}`]:record,[`identidades/${id.identidade}`]:key};
+  if(actor!=='admin') {
+    record.quota={inicioMs:window,slot};
+    patch[`cotasManuais/${uid}/${window}/${slot}`]={caseId:key,inicioMs:window,criadoEmMs:stamp()};
+  }
+  return {key,record,patch};
 }
-const synthetic=numeroProntuario=>({numeroProntuario,dataEntrada:'2026-10-20',nomeCriad:'PESSOA FICTICIA',responsavelCpf:'000.000.000-00'});
-async function test(name,fn) {
-  const started=Date.now();await fn();results.push({name,result:'passed',durationMs:Date.now()-started});console.log('PASS '+name);
+async function edit(actor,key,change={}) {
+  const old=allowed(await db('seed','GET',`casos/${key}`));
+  return {...old,...change,origemCadastro:old.origemCadastro??'legado',auditoria:auditFor(old.auditoria,accounts[actor].uid,stamp(),true)};
 }
-const denied=r=>{assert.equal(r.status,401);assert.equal(r.body.error,'Permission denied');};
-const error=(r,status)=>assert.equal(r.body.error?.status,status,JSON.stringify(r.body));
-const ok=r=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body.result;};
-for(const actor of ['tecnico','admin','consulta','sem-cargo','inativo','desconhecido']) {
-  const r=await request('http://127.0.0.1:19099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-key',{method:'POST',body:{email:actor+'@example.invalid',password:'Ficticia-2026-Only!',returnSecureToken:true}});
+function event(actor,previous=null,extra={}) {
+  return {schema:1,kind:'tarefas',responsavel:'EQUIPE FICTICIA',observacao:'FICTICIO',situacao:'aberta',tipo:'Documento',dataConclusao:'',descricao:'CONFERIR FICTICIO',prazo:'2026-10-20',prioridade:'normal',...extra,auditoria:auditFor(previous?.auditoria,accounts[actor].uid,stamp())};
+}
+for(const actor of ['tecnico','admin','consulta','sem-cargo','inativo','desconhecido','tecnico2']) {
+  const r=await local('http://127.0.0.1:19099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-key',{method:'POST',body:{email:actor+'@example.invalid',password:'Ficticia-2026-Only!',returnSecureToken:true}});
   assert.equal(r.status,200);accounts[actor]={uid:r.body.localId,token:r.body.idToken};
 }
 const access={};
-for(const [actor,role,active] of [['tecnico','tecnico',true],['admin','administrador',true],['consulta','consulta',true],['inativo','tecnico',false],['desconhecido','inventado',true]])access[accounts[actor].uid]={role,active};
-const legacy={...synthetic('0099'),origemCadastro:'planilha',dadosPlanilha:'{"nome":"FICTICIO"}',historicoPlanilha:'[]',criadoPor:'autor-legado',criadoEm:'2020-01-01T00:00:00Z'};
-assert.equal((await db('seed','PUT','',{access,casos:{legacy_import:legacy}})).status,200);
+for(const [actor,role,active] of [['tecnico','tecnico',true],['tecnico2','tecnico',true],['admin','administrador',true],['consulta','consulta',true],['inativo','tecnico',false],['desconhecido','inventado',true]])access[accounts[actor].uid]={role,active};
+const legacy={...input('0099'),origemCadastro:'planilha',dadosPlanilha:'{"nome":"FICTICIO"}',historicoPlanilha:'[]',criadoPor:'autor-legado',criadoEm:'2020-01-01T00:00:00Z',agenda_legada:'{"evidencia":"FICTICIA"}'};
+allowed(await db('seed','PUT','',{access,casos:{legacy_import:legacy}}));
 try {
-  await test('rules loaded in the tested namespace exactly match the proposed file',async()=>{
-    const loaded=await db('seed','GET','.settings/rules');
-    assert.deepEqual(typeof loaded.body==='string'?JSON.parse(loaded.body):loaded.body,JSON.parse(fs.readFileSync(new URL('../../database.rules.example.json',import.meta.url),'utf8')));
+  await test('exact proposed Rules loaded in the tested namespace',async()=>{
+    const r=allowed(await db('seed','GET','.settings/rules'));
+    assert.deepEqual(typeof r==='string'?JSON.parse(r):r,JSON.parse(fs.readFileSync(new URL('../../database.rules.example.json',import.meta.url),'utf8')));
   });
-  await test('positive control: Auth token and Admin SDK use the seeded namespace',async()=>{
-    assert.equal(ok(await call('admin','salvarCaso',{operation:'create',data:synthetic('POSITIVE-CONTROL')})).committed,true);
-    assert.equal((await db('seed','GET','casos/'+caseKey('POSITIVE-CONTROL'))).body.criadoPor,accounts.admin.uid);
+  await test('new records remain blocked before legacy index readiness',async()=>{
+    denied(await db('admin','PATCH','',(await creation('admin','GATED')).patch));
+    denied(await db('admin','PUT','securityPolicy/identityRegistryReady',true));
+    allowed(await db('seed','PATCH','',{'securityPolicy/identityRegistryReady':true,'identidades/99':'legacy_import'}));
   });
-  for(const actor of ['tecnico','admin']) {
-    for(const origin of ['planilha','manual',undefined])await test(`${actor}: direct import/write denied with origin ${origin??'omitted'}`,async()=>{
-      const data={...synthetic('BLOCKED'),dadosPlanilha:'{}'};if(origin)data.origemCadastro=origin;
-      denied(await db(actor,'PUT','casos/alternate_'+(origin??'none'),data));
-    });
-  }
-  for(const actor of ['tecnico','consulta','inativo','sem-cargo','desconhecido'])await test(`${actor}: callable import denied`,async()=>{
-    error(await call(actor,'salvarCaso',{operation:'import',data:synthetic('FORBIDDEN')}),'PERMISSION_DENIED');
+  let manual,imported;
+  await test('positive control: admin imports with UID and server timestamp',async()=>{
+    imported=await creation('admin','IMPORT-1',{origin:'planilha'});imported.record.dadosPlanilha='{"nome":"FICTICIO"}';
+    allowed(await db('admin','PATCH','',imported.patch));
+    const saved=allowed(await db('seed','GET','casos/'+imported.key));
+    assert.equal(saved.auditoria.criadoPor,accounts.admin.uid);assert.equal(saved.auditoria.criacaoVerificada,true);assert.equal(typeof saved.auditoria.criadoEmMs,'number');
   });
-  for(const actor of ['sem-cargo','inativo','consulta','desconhecido','anonimo']) {
-    await test(`${actor}: collection, individual CPF and direct mutation denied`,async()=>{
-      denied(await db(actor,'GET','casos'));denied(await db(actor,'GET','casos/legacy_import/responsavelCpf'));
-      denied(await db(actor,'PUT','casos/direct',synthetic('BLOCKED')));
-      error(await call(actor,'salvarCaso',{operation:'create',data:synthetic('FORBIDDEN')}),actor==='anonimo'?'UNAUTHENTICATED':'PERMISSION_DENIED');
-    });
-  }
-  for(const actor of ['tecnico','admin','inativo','sem-cargo'])await test(`${actor}: own access promotion/reactivation denied`,async()=>{
+  await test('positive control: technical manual creation atomically consumes one quota slot',async()=>{
+    manual=await creation('tecnico','001');allowed(await db('tecnico','PATCH','',manual.patch));
+    const saved=allowed(await db('seed','GET','casos/'+manual.key));assert.equal(saved.auditoria.criadoPor,accounts.tecnico.uid);assert.equal(saved.auditoria.criadoEmMs,saved.auditoria.atualizadoEmMs);
+  });
+  for(const actor of ['sem-cargo','inativo','desconhecido','consulta','anonimo'])await test(`${actor}: direct collection, record, CPF, activities and mutation denied`,async()=>{
+    for(const path of ['casos','casos/'+manual.key,'casos/'+manual.key+'/responsavelCpf','atividades','identidades','legadoProtegido'])denied(await db(actor,'GET',path));
+    const c=await creation(actor==='anonimo'?'tecnico':actor,'BLOCKED-'+actor,{slot:'1'});denied(await db(actor,'PATCH','',c.patch));
+  });
+  for(const actor of ['admin','tecnico','sem-cargo','inativo'])await test(`${actor}: self promotion, reactivation and other-profile writes denied`,async()=>{
     denied(await db(actor,'PATCH',`access/${accounts[actor].uid}`,{role:'administrador',active:true}));
+    denied(await db(actor,'PUT',`access/${accounts.consulta.uid}/role`,'administrador'));
   });
-  await test('root multipath promotion is denied atomically; counters cannot be reset',async()=>{
-    denied(await db('tecnico','PATCH','',{[`access/${accounts.tecnico.uid}/role`]:'administrador','casos/forged':synthetic('X')}));
-    assert.equal((await db('seed','GET',`access/${accounts.tecnico.uid}/role`)).body,'tecnico');
-    assert.equal((await db('seed','GET','casos/forged')).body,null);
-    denied(await db('tecnico','PUT',`writeLimits/${accounts.tecnico.uid}`,{count:0,window:0}));
-    denied(await db('tecnico','GET','writeLimits'));
+  await test('multipath privilege escalation is denied atomically',async()=>{
+    const c=await creation('tecnico','ESCALATE',{slot:'1'});c.patch[`access/${accounts.tecnico.uid}/role`]='administrador';denied(await db('tecnico','PATCH','',c.patch));
+    assert.equal(allowed(await db('seed','GET','casos/'+c.key)),null);assert.equal(allowed(await db('seed','GET',`access/${accounts.tecnico.uid}/role`)),'tecnico');
   });
-  for(const field of ['origemCadastro','dadosPlanilha','historicoPlanilha','origemImportacao','criadoPor','criadoEm','atualizadoPor','atualizadoEm'])await test(`manual callable rejects ${field}`,async()=>{
-    error(await call('tecnico','salvarCaso',{operation:'create',data:{...synthetic('FORGED'),[field]:'forged'}}),'INVALID_ARGUMENT');
+  await test('technical planilha origin, missing origin and disguised import fields denied',async()=>{
+    const c=await creation('tecnico','BAD-IMPORT',{origin:'planilha',slot:'1'});denied(await db('tecnico','PATCH','',c.patch));
+    c.record.origemCadastro='manual';c.record.dadosPlanilha='{}';denied(await db('tecnico','PATCH','',c.patch));
+    delete c.record.dadosPlanilha;delete c.record.origemCadastro;denied(await db('tecnico','PATCH','',c.patch));
+    c.record.origemCadastro='manual';c.record.historicoPlanilha='[]';denied(await db('tecnico','PATCH','',c.patch));
+    delete c.record.historicoPlanilha;c.record.origemImportacao='origem-ficticia';denied(await db('tecnico','PATCH','',c.patch));
   });
-  await test('manual create stamps identity/origin/time from server',async()=>{
-    const before=Date.now(),result=ok(await call('tecnico','salvarCaso',{operation:'create',data:synthetic('001')}));
-    assert.equal(result.committed,true);assert.equal(result.caseKey,caseKey('1'));
-    const saved=(await db('seed','GET','casos/'+result.caseKey)).body;
-    assert.equal(saved.criadoPor,accounts.tecnico.uid);assert.equal(saved.atualizadoPor,accounts.tecnico.uid);assert.equal(saved.origemCadastro,'manual');
-    assert.ok(Date.parse(saved.criadoEm)>=before&&Date.parse(saved.criadoEm)<=Date.now());assert.equal(saved.criadoEm,saved.atualizadoEm);
+  await test('legacy import keys do not bypass origin, quota and registry checks',async()=>{
+    const c=await creation('tecnico','OLD-PATH',{slot:'1',origin:'planilha',key:'import_'+'a'.repeat(64)});denied(await db('tecnico','PATCH','',c.patch));
   });
-  await test('admin imports with trusted origin and identical canonical identity',async()=>{
-    assert.equal(ok(await call('admin','salvarCaso',{operation:'import',data:{...synthetic('2'),dadosPlanilha:'{"valor":"FICTICIO"}'}})).committed,true);
-    const saved=(await db('seed','GET','casos/'+caseKey('2'))).body;
-    assert.equal(saved.origemCadastro,'planilha');assert.equal(saved.criadoPor,accounts.admin.uid);
-    assert.equal(ok(await call('admin','salvarCaso',{operation:'import',data:synthetic('００１')})).committed,false);
+  await test('origin, original import snapshots and creation audit cannot be changed or deleted',async()=>{
+    for(const field of ['origemCadastro','dadosPlanilha','auditoria/criadoPor','auditoria/criadoEmMs','auditoria/criacaoVerificada']) {
+      const next=await edit('tecnico',imported.key);let obj=next;const parts=field.split('/');for(const p of parts.slice(0,-1))obj=obj[p];obj[parts.at(-1)]='forged';
+      denied(await db('tecnico','PUT','casos/'+imported.key,next));
+    }
+    const next=await edit('admin',imported.key);delete next.dadosPlanilha;denied(await db('admin','PUT','casos/'+imported.key,next));
+    denied(await db('tecnico','DELETE','casos/'+manual.key+'/auditoria'));
+    denied(await db('admin','DELETE','casos/'+manual.key));
   });
-  await test('legacy duplicates and concurrent creates cannot overwrite records',async()=>{
-    assert.equal(ok(await call('admin','salvarCaso',{operation:'import',data:synthetic('99')})).committed,false);
-    const pair=await Promise.all(['admin','tecnico'].map(actor=>call(actor,'salvarCaso',{operation:'create',data:synthetic('CONCURRENT')})));
-    assert.equal(pair.map(ok).filter(r=>r.committed).length,1);
+  await test('UID spoofing and arbitrary audit timestamps rejected on creates and updates',async()=>{
+    for(const mutate of [a=>a.criadoPor=accounts.admin.uid,a=>a.atualizadoPor=accounts.admin.uid,a=>a.criadoEmMs=0,a=>a.atualizadoEmMs=4102444800000,a=>a.criacaoVerificada=false]) {
+      const c=await creation('tecnico','FORGED',{slot:'1'});mutate(c.record.auditoria);denied(await db('tecnico','PATCH','',c.patch));
+    }
+    const next=await edit('tecnico',manual.key);next.auditoria.atualizadoEmMs='data-inventada';denied(await db('tecnico','PUT','casos/'+manual.key,next));
+    const spoof=await edit('tecnico',manual.key);spoof.criadoPor='forged';denied(await db('tecnico','PUT','casos/'+manual.key,spoof));
   });
-  await test('legacy edits preserve import snapshots, origin and recorded creation metadata',async()=>{
-    assert.deepEqual((await db('seed','GET','casos/legacy_import')).body,legacy);
-    const data={...synthetic('0099'),nomeCriad:'ALTERACAO FICTICIA'};
-    assert.equal(ok(await call('tecnico','salvarCaso',{operation:'update',caseKey:'legacy_import',expected:synthetic('0099'),data})).committed,true);
-    const stored=(await db('seed','GET','casos/legacy_import')).body;
-    for(const field of ['dadosPlanilha','historicoPlanilha','origemCadastro','criadoEm','criadoPor'])assert.equal(stored[field],legacy[field]);
-    assert.equal(stored.atualizadoPor,accounts.tecnico.uid);
-    assert.equal(ok(await call('tecnico','salvarCaso',{operation:'update',caseKey:'legacy_import',expected:synthetic('0099'),data})).committed,false);
-    error(await call('tecnico','salvarCaso',{operation:'update',caseKey:'legacy_import',expected:synthetic('0099'),data:{...data,criadoPor:'forged'}}),'INVALID_ARGUMENT');
+  await test('valid case update stamps current UID/time and advances revision',async()=>{
+    const old=allowed(await db('seed','GET','casos/'+manual.key));const next=await edit('tecnico2',manual.key,{nomeCriad:'ATUALIZACAO FICTICIA'});
+    allowed(await db('tecnico2','PUT','casos/'+manual.key,next));const saved=allowed(await db('seed','GET','casos/'+manual.key));
+    assert.equal(saved.auditoria.criadoPor,old.auditoria.criadoPor);assert.equal(saved.auditoria.criadoEmMs,old.auditoria.criadoEmMs);assert.equal(saved.auditoria.atualizadoPor,accounts.tecnico2.uid);assert.equal(saved.auditoria.revisao,2);
+    denied(await db('tecnico2','PUT','casos/'+manual.key,next));
   });
-  await test('server rejects impossible calendar dates in creates, updates and imports',async()=>{
-    for(const operation of ['create','import'])error(await call('admin','salvarCaso',{operation,data:{...synthetic('DATE'),dataEntrada:'2026-99-99'}}),'INVALID_ARGUMENT');
-    error(await call('tecnico','salvarCaso',{operation:'update',caseKey:caseKey('1'),expected:synthetic('001'),data:{...synthetic('001'),dataEntrada:'2026-02-29'}}),'INVALID_ARGUMENT');
+  await test('impossible calendar dates rejected and valid leap dates accepted',async()=>{
+    for(const date of ['2026-99-99','2026-02-29','1900-02-29','2100-02-29','2026-04-31','0000-01-01']) {
+      const c=await creation('admin','DATE-'+date);c.record.dataEntrada=date;denied(await db('admin','PATCH','',c.patch));
+    }
+    for(const date of ['2024-02-29','2000-02-29','2026-04-30']) {const c=await creation('admin','VALID-'+date);c.record.dataEntrada=date;allowed(await db('admin','PATCH','',c.patch));}
   });
-  const task={schema:1,kind:'tarefas',revisao:999,responsavel:'EQUIPE FICTICIA',observacao:'FICTICIO',situacao:'aberta',tipo:'Documento',dataConclusao:'',descricao:'DOCUMENTO FICTICIO',prazo:'2026-10-20',prioridade:'normal',criadoPor:'forged',criadoEm:'1900',atualizadoPor:'forged',atualizadoEm:'2100'};
-  let taskStored;
-  await test('activity creation ignores spoofed authors/dates and stamps server metadata',async()=>{
-    assert.equal(ok(await call('tecnico','salvarAtividade',{caseKey:caseKey('1'),field:'pendencia_test',expected:null,value:JSON.stringify(task)})).committed,true);
-    taskStored=(await db('seed','GET','casos/'+caseKey('1')+'/pendencia_test')).body;
-    const data=JSON.parse(taskStored);assert.equal(data.criadoPor,accounts.tecnico.uid);assert.equal(data.atualizadoPor,accounts.tecnico.uid);assert.equal(data.revisao,1);assert.notEqual(data.criadoEm,'1900');
+  await test('new unknown fields and post-create invalid dates denied',async()=>{
+    const c=await creation('admin','UNKNOWN');c.record.adminSecret='FICTICIO';denied(await db('admin','PATCH','',c.patch));
+    const e=await edit('tecnico',manual.key,{dataEntrada:'2026-02-30'});denied(await db('tecnico','PUT','casos/'+manual.key,e));
   });
-  await test('activity update preserves creation, rejects stale edits and invalid dates',async()=>{
-    const payload={caseKey:caseKey('1'),field:'pendencia_test',expected:taskStored,value:JSON.stringify({...task,observacao:'NOVO FICTICIO'})};
-    assert.equal(ok(await call('admin','salvarAtividade',payload)).committed,true);
-    const saved=JSON.parse((await db('seed','GET','casos/'+caseKey('1')+'/pendencia_test')).body);
-    assert.equal(saved.criadoPor,accounts.tecnico.uid);assert.equal(saved.atualizadoPor,accounts.admin.uid);assert.equal(saved.revisao,2);
-    assert.equal(ok(await call('tecnico','salvarAtividade',payload)).committed,false);
-    error(await call('tecnico','salvarAtividade',{...payload,value:JSON.stringify({...task,prazo:'2026-02-30'})}),'INVALID_ARGUMENT');
-    error(await call('tecnico','salvarAtividade',{...payload,field:'criadoPor'}),'INVALID_ARGUMENT');
-    error(await call('consulta','salvarAtividade',payload),'PERMISSION_DENIED');
+  await test('canonical/legacy identity cannot be duplicated, forged or removed',async()=>{
+    const duplicate=await creation('admin','0001',{key:'case_'+'b'.repeat(64)});denied(await db('admin','PATCH','',duplicate.patch));
+    const legacyDup=await creation('admin','99');denied(await db('admin','PATCH','',legacyDup.patch));
+    const forged=await creation('admin','00100');forged.record.identidade='1';delete forged.patch['identidades/100'];forged.patch['identidades/1']=forged.key;denied(await db('admin','PATCH','',forged.patch));
+    denied(await db('admin','DELETE','identidades/1'));
+    const noIndex=await creation('admin','NO-INDEX');delete noIndex.patch['identidades/NO-INDEX'];denied(await db('admin','PATCH','',noIndex.patch));
   });
-  await test('consulta receives only bounded aggregate with no personal data, IDs or filters',async()=>{
-    const summary=ok(await call('consulta','consultarResumo',{}));
-    assert.deepEqual(summary,{schema:1,casesRange:'Menos de 10'});
-    error(await call('consulta','consultarResumo',{caseKey:'legacy_import'}),'INVALID_ARGUMENT');
-    for(const actor of ['sem-cargo','inativo','desconhecido'])error(await call(actor,'consultarResumo',{}),'PERMISSION_DENIED');
+  await test('concurrent identity creates yield one successful writer',async()=>{
+    const a=await creation('admin','RACE',{key:'case_'+'c'.repeat(64)}),b=await creation('tecnico2','race',{slot:'0',key:'case_'+'d'.repeat(64)});
+    const pair=await Promise.all([db('admin','PATCH','',a.patch),db('tecnico2','PATCH','',b.patch)]);assert.equal(pair.filter(r=>r.status===200).length,1);assert.equal(pair.filter(r=>r.status===401).length,1);
   });
-  await test('shared summary groups larger populations into ranges of ten',async()=>{
-    for(let i=0;i<12;i++)assert.equal((await db('seed','PUT','casos/synthetic_'+i,synthetic('EXTRA-'+i))).status,200);
-    assert.deepEqual(ok(await call('consulta','consultarResumo',{})),{schema:1,casesRange:'10 a 19'});
+  await test('quota enforces 30 total slots across requests and prevents reuse/removal',async()=>{
+    for(let i=1;i<30;i++)allowed(await db('tecnico','PATCH','',(await creation('tecnico','QUOTA-'+i,{slot:String(i)})).patch));
+    denied(await db('tecnico','PATCH','',(await creation('tecnico','QUOTA-31',{slot:'30'})).patch));
+    denied(await db('tecnico','PATCH','',(await creation('tecnico','QUOTA-REUSE',{slot:'0'})).patch));
+    denied(await db('tecnico','DELETE',`cotasManuais/${accounts.tecnico.uid}/${start()}/0`));
+    const noQuota=await creation('tecnico','NO-QUOTA',{slot:'0'});delete noQuota.record.quota;denied(await db('tecnico','PATCH','',noQuota.patch));
+    const empty=await creation('tecnico','NO-TICKET',{slot:'0'});delete empty.patch[`cotasManuais/${accounts.tecnico.uid}/${start()}/0`];denied(await db('tecnico','PATCH','',empty.patch));
   });
-  await test('manual quota is server-side, persistent and unaffected by client origins',async()=>{
-    await db('seed','PUT',`writeLimits/${accounts.tecnico.uid}`,{window:Math.floor(Date.now()/3600000),count:29});
-    assert.equal(ok(await call('tecnico','salvarCaso',{operation:'create',data:synthetic('QUOTA-LAST')})).committed,true);
-    error(await call('tecnico','salvarCaso',{operation:'create',data:synthetic('QUOTA-BLOCKED')}),'RESOURCE_EXHAUSTED');
-    assert.equal(ok(await call('admin','salvarCaso',{operation:'import',data:synthetic('ADMIN-QUOTA')})).committed,true);
+  await test('quota cannot use future, expired or fractional windows',async()=>{
+    for(const window of [start()+3600000,start()-3600000,start()+1])denied(await db('tecnico','PATCH','',(await creation('tecnico','WINDOW-'+window,{slot:'0',window})).patch));
   });
-  await test('active revocation blocks REST and new callable operations with the same token',async()=>{
-    await db('seed','PATCH',`access/${accounts.tecnico.uid}`,{active:false});
-    denied(await db('tecnico','GET','casos'));
-    error(await call('tecnico','salvarCaso',{operation:'create',data:synthetic('REVOKED')}),'PERMISSION_DENIED');
-    error(await call('tecnico','consultarResumo',{}),'PERMISSION_DENIED');
+  await test('concurrent writers cannot share one slot; batches cannot create two cases per ticket',async()=>{
+    const a=await creation('tecnico2','SLOT-RACE-A',{slot:'5'}),b=await creation('tecnico2','SLOT-RACE-B',{slot:'5'});
+    const pair=await Promise.all([db('tecnico2','PATCH','',a.patch),db('tecnico2','PATCH','',b.patch)]);assert.equal(pair.filter(r=>r.status===200).length,1);
+    const c=await creation('tecnico2','BATCH-A',{slot:'6'}),d=await creation('tecnico2','BATCH-B',{slot:'6'});denied(await db('tecnico2','PATCH','',{...c.patch,...d.patch}));
+    assert.equal(allowed(await db('seed','GET','casos/'+c.key)),null);
   });
-  await test('retired import endpoint remains closed',async()=>{
-    error(await call('admin','importarCaso',{data:synthetic('LEGACY')}),'FAILED_PRECONDITION');
-    error(await call('tecnico','importarCaso',{data:synthetic('LEGACY')}),'PERMISSION_DENIED');
+  await test('legacy edits require reviewed protected archive and preserve old snapshots/audit',async()=>{
+    denied(await db('tecnico','PUT','casos/legacy_import',await edit('tecnico','legacy_import',{nomeCriad:'EDITADO FICTICIO'})));
+    allowed(await db('seed','PATCH','',{'securityPolicy/editableCases/legacy_import':true,'legadoProtegido/legacy_import':legacy}));
+    allowed(await db('tecnico','PUT','casos/legacy_import',await edit('tecnico','legacy_import',{nomeCriad:'EDITADO FICTICIO'})));
+    const stored=allowed(await db('seed','GET','casos/legacy_import'));assert.equal(stored.criadoPor,legacy.criadoPor);assert.equal(stored.dadosPlanilha,legacy.dadosPlanilha);assert.equal(stored.auditoria.criacaoVerificada,false);assert.equal(stored.auditoria.criadoPor,'desconhecido');
+    denied(await db('tecnico','DELETE','legadoProtegido/legacy_import'));
+  });
+  let task;
+  await test('structured activity creation succeeds and JSON-string bypass is denied',async()=>{
+    task=event('tecnico');allowed(await db('tecnico','PUT',`atividades/${manual.key}/pendencia_test`,task));
+    const stored=allowed(await db('seed','GET',`atividades/${manual.key}/pendencia_test`));assert.equal(stored.auditoria.criadoPor,accounts.tecnico.uid);
+    denied(await db('tecnico','PUT',`atividades/${manual.key}/pendencia_string`,JSON.stringify(task)));
+    const next=await edit('tecnico',manual.key,{agenda_bypass:JSON.stringify(task)});denied(await db('tecnico','PUT','casos/'+manual.key,next));
+  });
+  await test('activity authorship, deletion, stale revisions and calendar protected',async()=>{
+    const path=`atividades/${manual.key}/pendencia_test`,old=allowed(await db('seed','GET',path));
+    const changed=event('tecnico2',old,{observacao:'NOVO FICTICIO'});allowed(await db('tecnico2','PUT',path,changed));denied(await db('tecnico2','PUT',path,changed));
+    const saved=allowed(await db('seed','GET',path));assert.equal(saved.auditoria.criadoPor,accounts.tecnico.uid);assert.equal(saved.auditoria.atualizadoPor,accounts.tecnico2.uid);
+    const spoof=event('tecnico2',saved);spoof.auditoria.criadoPor=accounts.tecnico2.uid;denied(await db('tecnico2','PUT',path,spoof));
+    denied(await db('tecnico','DELETE',path));denied(await db('admin','DELETE',`atividades/${manual.key}`));
+    denied(await db('tecnico','PUT',`atividades/${manual.key}/pendencia_bad`,event('tecnico',null,{prazo:'2026-02-30'})));
+    denied(await db('consulta','PUT',`atividades/${manual.key}/pendencia_bad`,event('consulta')));
+  });
+  await test('consulta reads only independently published summary; no raw-data aggregation',async()=>{
+    assert.equal(allowed(await db('consulta','GET','compartilhavel/resumo')),null);
+    denied(await db('tecnico','PUT','compartilhavel/resumo',{schema:1,faixa:1,revisao:1,publicadoEmMs:stamp()}));
+    allowed(await db('admin','PUT','compartilhavel/resumo',{schema:1,faixa:1,revisao:1,publicadoEmMs:stamp()}));
+    const summary=allowed(await db('consulta','GET','compartilhavel/resumo'));assert.deepEqual(Object.keys(summary).sort(),['faixa','publicadoEmMs','revisao','schema']);assert.equal(summary.faixa,1);
+    denied(await db('admin','PUT','compartilhavel/resumo',{schema:1,faixa:1,revisao:2,publicadoEmMs:stamp(),nome:'FICTICIO'}));
+    for(const actor of ['inativo','sem-cargo','desconhecido','anonimo'])denied(await db(actor,'GET','compartilhavel/resumo'));
+  });
+  await test('real SDK client creates/edits cases and structured activity against Rules',async()=>{
+    const app=initializeApp({projectId:project,apiKey:'fake-api-key',databaseURL:`https://${ns}.firebaseio.com`},'sdk-test');
+    const auth=getAuth(app);connectAuthEmulator(auth,'http://127.0.0.1:19099',{disableWarnings:true});
+    const database=databaseAPI.getDatabase(app);databaseAPI.connectDatabaseEmulator(database,'127.0.0.1',19000);
+    try {
+      await signInWithEmailAndPassword(auth,'tecnico2@example.invalid','Ficticia-2026-Only!');
+      const store=createSparkStore(database,auth,databaseAPI),data=input('SDK-1');
+      const saved=await store.saveCase({operation:'create',data});assert.equal(saved.committed,true);
+      assert.equal((await store.saveCase({operation:'create',data})).committed,false);
+      assert.equal((await store.saveCase({operation:'update',caseKey:saved.caseKey,expected:data,data:{...data,nomeCriad:'SDK FICTICIO'}})).committed,true);
+      const value=buildActivity('tarefas',{responsavel:'FICTICIO',observacao:'FICTICIO',situacao:'aberta',tipo:'Documento',dataConclusao:'',descricao:'FICTICIO',prazo:'2026-10-20',prioridade:'normal'},null,auth.currentUser.uid);
+      assert.equal((await store.saveActivity({caseKey:saved.caseKey,field:'pendencia_sdk',expected:null,value})).committed,true);
+      const existing=allowed(await db('seed','GET',`atividades/${saved.caseKey}/pendencia_sdk`));assert.equal(existing.auditoria.criadoPor,accounts.tecnico2.uid);
+      assert.ok(!Object.hasOwn(existing,'criadoPor'));
+      const snapshot=await databaseAPI.get(databaseAPI.ref(database,`atividades/${saved.caseKey}/pendencia_sdk`));
+      const displayed=activityForDisplay(snapshot.val()),expected=JSON.stringify(displayed);
+      const changed=JSON.stringify({...displayed,observacao:'SDK ATUALIZADO FICTICIO'});
+      assert.equal((await store.saveActivity({caseKey:saved.caseKey,field:'pendencia_sdk',expected,value:changed})).committed,true);
+      assert.equal((await store.saveActivity({caseKey:saved.caseKey,field:'pendencia_sdk',expected,value:changed})).committed,false);
+      await signOut(auth);await signInWithEmailAndPassword(auth,'consulta@example.invalid','Ficticia-2026-Only!');
+      assert.deepEqual(await store.sharedSummary(),{published:true,casesRange:'10 a 19'});
+      await assert.rejects(store.saveCase({operation:'create',data:input('SDK-DENIED')}));
+      await assert.rejects(store.publishSummary(25));
+      await signOut(auth);await signInWithEmailAndPassword(auth,'admin@example.invalid','Ficticia-2026-Only!');
+      await store.publishSummary(25);
+      assert.deepEqual(await store.sharedSummary(),{published:true,casesRange:'20 a 29'});
+    } finally {await signOut(auth);await deleteApp(app);}
+  });
+  await test('active revocation blocks new REST operations with the same token',async()=>{
+    allowed(await db('seed','PATCH',`access/${accounts.tecnico.uid}`,{active:false}));
+    denied(await db('tecnico','GET','casos'));denied(await db('tecnico','PUT',`atividades/${manual.key}/pendencia_revoked`,event('tecnico')));
+  });
+  await test('no Functions configuration, callable SDK or deployment in the Spark test runner',async()=>{
+    for(const name of ['firebase.json','firebase.emulator.json'])assert.equal(JSON.parse(fs.readFileSync(name,'utf8')).functions,undefined);
+    assert.ok(!fs.readFileSync('script.js','utf8').includes('firebase-functions.js'));
+    assert.ok(!fs.readFileSync('scripts/test-emulator.cjs','utf8').includes('auth,database,functions'));
   });
 } finally {
-  await db('seed','DELETE','');
-  fs.mkdirSync('test-results',{recursive:true});
-  fs.writeFileSync('test-results/security-emulator.json',JSON.stringify({project,syntheticOnly:true,results},null,2)+'\n');
+  allowed(await db('seed','DELETE',''));
+  fs.mkdirSync('test-results',{recursive:true});fs.writeFileSync('test-results/security-emulator.json',JSON.stringify({project,syntheticOnly:true,functionsUsed:false,results},null,2)+'\n');
 }
-console.log(`${results.length} security integration scenarios passed; Auth, RTDB and Functions emulators only.`);
+console.log(`${results.length} Spark security integration scenarios passed; Auth and RTDB emulators only.`);

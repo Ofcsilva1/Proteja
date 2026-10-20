@@ -1,9 +1,7 @@
 # Cargos e permissões do Proteja
 
-A autorização de gravações passou para o servidor. Consulte [contrato de acesso, limites, testes e implantação](SECURITY-HARDENING.md).
+Consulte [a matriz de acesso e o contrato Spark](SECURITY-SPARK.md). Contas precisam de cargo reconhecido e active true em access/{uid}. Clientes não alteram cargos nem flags administrativas.
 
-Contas exigem active igual a true e cargo reconhecido em access/{uid}. Clientes não escrevem perfis. Administrador, coordenador e técnico leem casos completos; consulta acessa exclusivamente resumo em faixas, sem receber casos individuais. Anônimos, contas sem cargo, desconhecidas ou inativas não têm acesso.
+Administrador, coordenador e técnico leem casos completos e atividades. Administrador importa; técnicos e coordenadores têm 30 criações manuais por UID/hora, validadas nas Rules. Consulta lê somente um resumo agregado publicado manualmente pelo administrador, sem casos individuais.
 
-Todas as gravações diretas pelo SDK/REST são negadas nas regras propostas, inclusive para administrador. Cadastros, importações, edições e atividades passam por Functions com verificação de cargo e validação. Importação é exclusiva de administrador; criação manual por técnico/coordenador tem quota de 30 tentativas por hora.
-
-As regras publicadas continuam não verificadas; incorporar uma PR não as implanta. A versão exige implantação coordenada e Blaze para Functions, ambos fora desta mudança.
+As regras propostas aplicam autoria, timestamps, calendário, unicidade e quota no servidor, sem Functions. Arquivo protegido e índice legados exigem preparo revisado antes de liberar as flags. Nenhuma regra foi publicada em produção.
